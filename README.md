@@ -230,71 +230,133 @@ Simpan juga `LogAktivitas` (jejak audit) minimal satu siklus penilaian penuh.
 
 ---
 
-## Deploy gratis (Render + Neon + R2 + Cloudflare Pages)
+## Deploy gratis (PythonAnywhere + SQLite + R2 + Cloudflare Pages)
 
 Susunan tanpa server sendiri, semua di tier gratis:
 
 | Bagian | Layanan | Peran |
 |---|---|---|
-| Backend | [Render](https://render.com) | Web service Python, jalankan `render.yaml` |
-| Basis data | [Neon](https://neon.tech) | PostgreSQL terkelola |
+| Backend | [PythonAnywhere](https://www.pythonanywhere.com) | Web app Python (WSGI), konfigurasi manual lewat dashboard |
+| Basis data | SQLite | Berkas `backend/db.sqlite3` di disk PythonAnywhere (persisten, bukan Postgres/Neon) |
 | Berkas bukti dukung | [Cloudflare R2](https://www.cloudflare.com/products/r2/) | Pengganti `backend/media/`, wajib (lihat catatan di bawah) |
 | Frontend | [Cloudflare Pages](https://pages.cloudflare.com) | Hosting statis hasil `npm run build` |
 
-Kenapa berkas **wajib** pindah ke R2, bukan sekadar pilihan: disk Render tier
-gratis bersifat sementara — berkas yang diunggah ke `backend/media/` hilang
-tiap kali servis redeploy atau bangun ulang. Dan karena frontend (Cloudflare
-Pages) dan backend (Render) jadi dua domain berbeda, tautan berkas juga harus
-berupa URL utuh (R2 memberi ini otomatis), bukan path relatif seperti saat
-frontend-backend satu server.
+Kenapa berkas **wajib** pindah ke R2 walau disk PythonAnywhere sendiri
+persisten (beda dari Render): karena frontend (Cloudflare Pages) dan backend
+(PythonAnywhere) tetap dua domain berbeda, tautan berkas harus berupa URL
+utuh (R2 memberi ini otomatis lewat `S3Storage`), bukan path relatif
+`/media/...` yang cuma benar kalau frontend-backend satu server.
+
+`simonda/settings.py` sudah dirancang fleksibel: tanpa `DATABASE_URL` atau
+`DB_NAME` di `.env`, otomatis jatuh ke SQLite — tidak ada kode yang perlu
+diubah untuk susunan ini.
 
 ### Urutan setup
 
-**1. Neon** — buat project, salin connection string-nya (`postgresql://...`).
-Simpan dulu, dipakai di langkah 3.
-
-**2. Cloudflare R2** — buat bucket, buat R2 API token (catat *Access Key ID*
+**1. Cloudflare R2** — buat bucket, buat R2 API token (catat *Access Key ID*
 dan *Secret Access Key*), catat *Account ID* kamu (untuk menyusun
 `R2_ENDPOINT_URL=https://<account_id>.r2.cloudflarestorage.com`).
 
-**3. Render** — hubungkan repo GitHub ini, lalu **New → Blueprint** dan pilih
-`render.yaml` di root repo. Setelah Blueprint dibuat, isi env var yang di
-`render.yaml` ditandai `sync: false` lewat dashboard (nilainya sengaja tidak
-ada di file, supaya tidak ke-commit ke git):
+**2. PythonAnywhere** — daftar akun gratis, lalu di tab **Consoles**, buka
+**Bash console** dan jalankan:
 
-```
-SECRET_KEY       = (python -c "import secrets; print(secrets.token_urlsafe(50))")
-ALLOWED_HOSTS    = simonda-api-xxxx.onrender.com   # domain yang Render kasih
-DATABASE_URL     = (connection string dari langkah 1)
-R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME, R2_ENDPOINT_URL
-                 = (dari langkah 2)
-CORS_ORIGINS, CSRF_ORIGINS = (isi sementara dengan apa saja, diupdate di langkah 5)
+```bash
+git clone <url-repo-ini>
+cd simonda/backend
+python3.12 -m venv ~/.virtualenvs/simonda-venv
+source ~/.virtualenvs/simonda-venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Deploy, lalu catat URL servisnya.
+Buat `backend/.env` langsung di server (lewat `nano .env` di console, atau
+tab **Files**) — **ini file produksi, bukan salinan dari laptop**:
+
+```
+DEBUG=0
+SECRET_KEY=<python -c "import secrets; print(secrets.token_urlsafe(50))">
+ALLOWED_HOSTS=<username>.pythonanywhere.com
+CORS_ORIGINS=https://simonda-xxxx.pages.dev
+CSRF_ORIGINS=https://simonda-xxxx.pages.dev
+
+DATABASE_URL=
+DB_NAME=
+
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET_NAME=...
+R2_ENDPOINT_URL=https://<account_id>.r2.cloudflarestorage.com
+```
+`DATABASE_URL` dan `DB_NAME` sengaja dikosongkan (baris boleh ada, isinya
+kosong) supaya jatuh ke SQLite. `CORS_ORIGINS`/`CSRF_ORIGINS` bisa diisi
+sementara, diupdate lagi setelah langkah 4 selesai dan domain Cloudflare
+Pages-nya diketahui.
+
+Masih di console yang sama, siapkan basis data:
+```bash
+python manage.py migrate
+python manage.py collectstatic --noinput
+python manage.py seed_simonda --tahun 2027
+```
+
+**3. Konfigurasi Web app** — di tab **Web**, klik **Add a new web app** →
+**Manual configuration** → pilih versi Python yang sama dengan venv di atas.
+Isi:
+- **Source code**: `/home/<username>/simonda/backend`
+- **Virtualenv**: `/home/<username>/.virtualenvs/simonda-venv`
+- **WSGI configuration file**: klik link-nya, ganti seluruh isinya jadi:
+  ```python
+  import os
+  import sys
+
+  path = '/home/<username>/simonda/backend'
+  if path not in sys.path:
+      sys.path.insert(0, path)
+
+  os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'simonda.settings')
+
+  from django.core.wsgi import get_wsgi_application
+  application = get_wsgi_application()
+  ```
+
+  **Soal proses web app tidak mewarisi env var dari console**: benar, dan
+  memang **tidak perlu** ditambal manual di berkas WSGI ini — `settings.py`
+  proyek ini sudah memanggil `load_dotenv(BASE_DIR / ".env")` di baris
+  paling atas, dan itu jalan otomatis begitu `get_wsgi_application()` di
+  atas mengimpor `simonda.settings`, apa pun yang memicunya (WSGI atau
+  console). Syaratnya cuma satu: berkas `backend/.env` dari langkah 2
+  harus ada persis di `/home/<username>/simonda/backend/.env` di server —
+  bukan soal kode WSGI-nya.
+
+Klik tombol hijau **Reload** di atas tab Web. Catat URL-nya
+(`https://<username>.pythonanywhere.com`).
 
 **4. Cloudflare Pages** — hubungkan repo yang sama. Root directory `frontend`,
 framework preset **Vite**, build command `npm run build`, output directory
-`dist`. Isi environment variable `VITE_API_URL` = URL Render dari langkah 3
-(Vite membakukan env var ini saat *build*, jadi harus diisi di sini, bukan
-cuma di `.env` lokal). Deploy, catat domain Pages-nya.
+`dist`. Isi environment variable `VITE_API_URL` = URL PythonAnywhere dari
+langkah 3 (Vite membakukan env var ini saat *build*, jadi harus diisi di
+sini, bukan cuma di `.env` lokal). Deploy, catat domain Pages-nya.
 
-**5. Kembali ke Render** — update `CORS_ORIGINS` dan `CSRF_ORIGINS` dengan
-domain Cloudflare Pages dari langkah 4 (`https://simonda-xxxx.pages.dev`),
-lalu redeploy servis.
-
-**6. Isi data awal** — buka tab **Shell** di dashboard Render, jalankan:
-```bash
-python manage.py seed_simonda --tahun 2027
-```
-Ini mengisi 45 OPD, katalog indikator, dan akun administrator ke database
-Neon yang masih kosong.
+**5. Kembali ke PythonAnywhere** — update `CORS_ORIGINS`/`CSRF_ORIGINS` di
+`backend/.env` dengan domain Cloudflare Pages dari langkah 4, lalu klik
+**Reload** lagi di tab Web.
 
 ### Yang perlu diketahui soal tier gratis
 
-Render free web service **tidur** setelah kurang lebih 15 menit tidak ada
-trafik — permintaan pertama setelahnya bisa menunggu 30–60 detik sebelum
-servis menyala lagi (*cold start*). Beri tahu verifikator/operator soal ini
-supaya tidak mengira sistem rusak. Neon free tier juga auto-suspend saat idle,
-tapi bangunnya jauh lebih cepat (biasanya di bawah 1 detik) dan sudah
-ditangani lewat `conn_max_age=0` di `settings.py`.
+**Whitelist domain luar**: PythonAnywhere Free membatasi domain yang boleh
+diakses server. R2 sudah dikonfirmasi bisa diakses dari console pada akun
+ini — kalau suatu saat berhenti bisa diakses, cek
+`https://www.pythonanywhere.com/whitelist/`.
+
+**Tidak ada auto-deploy**: push ke GitHub tidak otomatis ter-deploy. Tiap
+ada perubahan kode: `git pull` lewat Bash console, lalu klik **Reload** di
+tab Web.
+
+**SQLite tanggung jawab backup sendiri**: beda dari basis data terkelola,
+tidak ada *point-in-time recovery* otomatis. `backend/db.sqlite3` harus masuk
+jadwal backup manual (unduh lewat tab **Files**, atau salin berkala) —
+persis seperti catatan lama soal `backend/media/` di bagian VPS di atas,
+sekarang berlaku juga untuk basis datanya.
+
+**Konkurensi tulis SQLite terbatas** (penguncian tingkat berkas) — wajar
+untuk jumlah operator OPD yang realistis di sistem ini, tapi bukan pilihan
+untuk trafik tulis tinggi bersamaan.

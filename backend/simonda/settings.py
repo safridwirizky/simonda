@@ -64,11 +64,11 @@ TEMPLATES = [{
 }]
 
 if os.getenv("DATABASE_URL"):
-    # Postgres terkelola (mis. Neon) di produksi, lewat satu connection string.
-    # conn_max_age=0 sengaja — Neon free tier auto-suspend saat idle; koneksi
-    # persisten Django yang menahan koneksi lama ke instance yang sudah
-    # disuspend adalah sumber error umum ("SSL connection has been closed
-    # unexpectedly").
+    # Opsional: Postgres terkelola (mis. Neon) lewat satu connection string,
+    # kalau suatu saat dipakai lagi. conn_max_age=0 sengaja — banyak Postgres
+    # terkelola tier gratis auto-suspend saat idle; koneksi persisten Django
+    # yang menahan koneksi lama ke instance yang sudah disuspend adalah
+    # sumber error umum ("SSL connection has been closed unexpectedly").
     DATABASES = {"default": dj_database_url.config(
         env="DATABASE_URL", conn_max_age=0, ssl_require=True)}
 elif os.getenv("DB_NAME"):
@@ -81,8 +81,10 @@ elif os.getenv("DB_NAME"):
         "PORT": os.getenv("DB_PORT", "5432"),
     }}
 else:
-    # Fallback untuk uji coba cepat tanpa Postgres terpasang. Jangan dipakai
-    # untuk data yang sungguhan dipakai pengambilan keputusan (lihat README).
+    # Basis data utama SIMONDA (dev maupun produksi/PythonAnywhere). Berkas
+    # tunggal di disk -- pastikan db.sqlite3 masuk jadwal backup manual,
+    # tidak ada replikasi/point-in-time-recovery otomatis seperti basis data
+    # terkelola (lihat README bagian "Deploy gratis").
     DATABASES = {"default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
@@ -105,11 +107,12 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 if os.getenv("R2_BUCKET_NAME"):
-    # Cloudflare R2 (kompatibel S3) untuk berkas bukti dukung. Wajib di
-    # produksi: disk Render bersifat ephemeral, berkas yang disimpan lokal
-    # hilang tiap redeploy. Bucket privat + URL bertanda tangan (perilaku
-    # default django-storages) karena bukti dukung berisi dokumen pemerintah,
-    # bukan untuk diakses publik.
+    # Cloudflare R2 (kompatibel S3) untuk berkas bukti dukung. Wajib kalau
+    # frontend (Cloudflare Pages) dan backend beda domain: berkas.url perlu
+    # jadi URL absolut ke R2, bukan path relatif /media/... yang cuma benar
+    # kalau frontend-backend satu server. Bucket privat + URL bertanda
+    # tangan (perilaku default django-storages) karena bukti dukung berisi
+    # dokumen pemerintah, bukan untuk diakses publik.
     AWS_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
