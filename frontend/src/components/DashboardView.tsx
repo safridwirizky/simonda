@@ -212,13 +212,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                 {p.yandas_terisi.map((u) => (
                   <div key={u} className="flex items-center space-x-1.5 text-emerald-300">
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    <Check className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
                     <span className="truncate">{u}</span>
                   </div>
                 ))}
                 {p.yandas_kosong.map((u) => (
                   <div key={u} className="flex items-center space-x-1.5 text-slate-500 line-through">
-                    <XCircle className="w-3.5 h-3.5 text-slate-600" />
+                    <XCircle className="w-3.5 h-3.5 shrink-0 text-slate-600" />
                     <span className="truncate">{u}</span>
                   </div>
                 ))}
