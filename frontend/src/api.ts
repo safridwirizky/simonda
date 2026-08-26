@@ -240,6 +240,18 @@ export async function updateSpd(
   if (!res.ok) throw new Error(await extractError(res, 'Gagal memperbarui SPD'));
 }
 
+export async function uploadBerkasSpd(indikatorId: number, file: File): Promise<void> {
+  const formData = new FormData();
+  formData.append('berkas', file);
+
+  const res = await fetch(`${API_BASE}/api/spd/${indikatorId}/berkas`, {
+    method: 'POST',
+    headers: getAuthHeader(),
+    body: formData,
+  });
+  if (!res.ok) throw new Error(await extractError(res, 'Gagal mengunggah berkas SPD'));
+}
+
 export async function fetchRekapOpd(): Promise<RekapOPD[]> {
   const res = await fetch(`${API_BASE}/api/statistik/opd`, { headers: getHeaders() });
   if (!res.ok) throw new Error(await extractError(res, 'Gagal mengambil rekapitulasi OPD'));

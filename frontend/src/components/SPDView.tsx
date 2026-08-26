@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NilaiSPD } from '../types';
-import { FileSpreadsheet, Check } from 'lucide-react';
+import { FileSpreadsheet, Check, ExternalLink } from 'lucide-react';
 
 interface SPDViewProps {
   spdData: NilaiSPD[] | null;
@@ -8,13 +8,15 @@ interface SPDViewProps {
     indikatorId: number,
     data: { pilihan: number; keterangan?: string; tautan?: string }
   ) => Promise<void>;
+  onUploadBerkas: (indikatorId: number, file: File) => Promise<void>;
 }
 
-export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd }) => {
+export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUploadBerkas }) => {
   const [selectedSpd, setSelectedSpd] = useState<NilaiSPD | null>(null);
   const [editPilihan, setEditPilihan] = useState<number>(0);
   const [editKeterangan, setEditKeterangan] = useState<string>('');
   const [editTautan, setEditTautan] = useState<string>('');
+  const [uploadingFile, setUploadingFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   if (!spdData) {
@@ -33,6 +35,7 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd }) => {
     setEditPilihan(item.pilihan);
     setEditKeterangan(item.keterangan || '');
     setEditTautan(item.tautan || '');
+    setUploadingFile(null);
   };
 
   const handleSaveSpd = async () => {
@@ -44,6 +47,9 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd }) => {
         keterangan: editKeterangan,
         tautan: editTautan,
       });
+      if (uploadingFile) {
+        await onUploadBerkas(selectedSpd.indikator_id, uploadingFile);
+      }
       setSelectedSpd(null);
     } catch (e: any) {
       alert(e.message || 'Gagal menyimpan indikator SPD.');
@@ -197,6 +203,28 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd }) => {
                   onChange={(e) => setEditKeterangan(e.target.value)}
                   className="w-full p-2.5 border border-slate-200 rounded-xl"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Unggah Berkas Bukti Dukung (Maks 10MB)
+                </label>
+                <input
+                  type="file"
+                  onChange={(e) => setUploadingFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                />
+                {selectedSpd.berkas_url && (
+                  <a
+                    href={selectedSpd.berkas_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center space-x-1 text-xs text-emerald-600 font-semibold hover:underline mt-1"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Lihat Berkas Terunggah</span>
+                  </a>
+                )}
               </div>
             </div>
 

@@ -26,6 +26,7 @@ import {
   verifyNilaiBukti,
   fetchSpdData,
   updateSpd,
+  uploadBerkasSpd,
   fetchRekapOpd,
   fetchOpdList,
   exportIgaCsv,
@@ -241,6 +242,11 @@ export default function App() {
     await loadInitialData();
   };
 
+  const handleUploadBerkasSpd = async (indikatorId: number, file: File) => {
+    await uploadBerkasSpd(indikatorId, file);
+    await loadInitialData();
+  };
+
   // Ekspor resmi format IGA lewat backend (hanya inovasi terverifikasi & layak).
   const handleExportCsv = async () => {
     try {
@@ -368,6 +374,7 @@ export default function App() {
           <SPDView
             spdData={spdData}
             onUpdateSpd={handleUpdateSpd}
+            onUploadBerkas={handleUploadBerkasSpd}
           />
         ) : activeTab === 'rekap' ? (
           <RekapOPDView

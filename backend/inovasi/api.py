@@ -423,6 +423,7 @@ def daftar_spd(request):
             "pilihan": n.pilihan if n else 0,
             "skor": n.skor if n else Decimal("0"), "skor_maks": ind.skor_maks,
             "keterangan": n.keterangan if n else "", "tautan": n.tautan if n else "",
+            "berkas_url": n.berkas.url if (n and n.berkas) else None,
         })
     return keluar
 
@@ -440,6 +441,21 @@ def ubah_spd(request, indikator_id: int, data: NilaiSPDIn):
     n.save()
     LogAktivitas.catat(request.user, "ubah nilai SPD", ind.kode, ind.nama)
     return {"pesan": f"Indikator {ind.kode} tersimpan."}
+
+
+@api.post("/spd/{indikator_id}/berkas", response=PesanOut)
+def unggah_berkas_spd(request, indikator_id: int, berkas: UploadedFile = File(...)):
+    wajib_verifikator(request)
+    if berkas.size > MAKS_BERKAS:
+        raise HttpError(413, "Ukuran berkas melebihi 10 MB. Kecilkan dulu atau kirim tautan.")
+    p = periode_aktif()
+    ind = get_object_or_404(Indikator, id=indikator_id, periode=p, aspek=Indikator.SPD)
+    n, _ = NilaiSPD.objects.get_or_create(periode=p, indikator=ind)
+    n.berkas = berkas
+    n.diperbarui_oleh = request.user
+    n.save()
+    LogAktivitas.catat(request.user, "unggah bukti SPD", ind.kode, ind.nama)
+    return {"pesan": "Berkas tersimpan."}
 
 
 # ------------------------------ statistik ------------------------------

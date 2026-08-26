@@ -134,6 +134,7 @@ class NilaiSPDOut(Schema):
     skor_maks: float
     keterangan: str = ""
     tautan: str = ""
+    berkas_url: Optional[str] = None
 
 
 class VerifikasiBuktiIn(Schema):

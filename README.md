@@ -130,7 +130,7 @@ sebagai berkas statis di depan Gunicorn.
 cd backend
 export ALLOWED_HOSTS=localhost,127.0.0.1,testserver
 python uji_skor.py        # 32 pemeriksaan katalog dan rumus
-python uji_alur.py        # 51 pemeriksaan alur kerja
+python uji_alur.py        # 54 pemeriksaan alur kerja
 python uji_kontrak.py     # 40 pemeriksaan kontrak API terhadap antarmuka
 ```
 

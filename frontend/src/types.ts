@@ -139,6 +139,7 @@ export interface NilaiSPD {
   skor_maks: number;
   keterangan: string;
   tautan: string;
+  berkas_url?: string | null;
 }
 
 export interface ProyeksiHitungan {

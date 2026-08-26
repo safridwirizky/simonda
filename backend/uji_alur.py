@@ -9,6 +9,7 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "simonda.settings")
 django.setup()
 
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: E402
 from django.test import Client  # noqa: E402
 
 from inovasi import iga  # noqa: E402
@@ -69,6 +70,18 @@ for ind in spd:
           content_type="application/json", **kepala(t_vr))
 total_spd = sum(float(x["skor"]) for x in c.get("/api/spd", **kepala(t_vr)).json())
 cek("skor SPD semua parameter 2 = 42", total_spd == 42.0, total_spd)
+
+cek("operator tidak boleh unggah berkas SPD",
+    c.post(f"/api/spd/{spd[0].id}/berkas",
+           {"berkas": SimpleUploadedFile("x.pdf", b"isi", content_type="application/pdf")},
+           **kepala(t_op)).status_code == 403)
+r = c.post(f"/api/spd/{spd[0].id}/berkas",
+           {"berkas": SimpleUploadedFile("sk-spd.pdf", b"isi SK SPD uji", content_type="application/pdf")},
+           **kepala(t_vr))
+cek("verifikator berhasil unggah berkas SPD", r.status_code == 200, r.content[:200])
+berkas_url_spd = next(x["berkas_url"] for x in c.get("/api/spd", **kepala(t_vr)).json()
+                       if x["indikator_id"] == spd[0].id)
+cek("berkas_url SPD terisi setelah unggah", bool(berkas_url_spd), berkas_url_spd)
 
 print("\n== Membuat inovasi ==")
 r = c.post("/api/inovasi", {

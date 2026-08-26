@@ -162,7 +162,7 @@ s = c.get("/api/spd", **kepala(t_vr)).json()
 punya("baris SPD", s[0],
       ["indikator_id", "kode", "variabel", "nama", "bobot", "wajib", "parameter_1",
        "parameter_2", "parameter_3", "pilihan", "skor", "skor_maks", "keterangan",
-       "tautan"])
+       "tautan", "berkas_url"])
 cek("20 baris SPD", len(s) == 20, len(s))
 cek("3 variabel untuk pengelompokan", len({b["variabel"] for b in s}) == 3,
     {b["variabel"] for b in s})
