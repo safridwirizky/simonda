@@ -573,7 +573,7 @@ def rekap_opd(request):
     hasil = []
     for opd in OPD.objects.filter(aktif=True):
         daftar = list(Inovasi.objects.filter(periode=p, opd=opd)
-                      .prefetch_related("nilai__indikator"))
+                      .prefetch_related("nilai__indikator", "nilai__daftar_berkas"))
         n = len(daftar) or 1
         hasil.append({
             "opd": {"id": opd.id, "kode": opd.kode, "nama": opd.nama},
@@ -602,7 +602,7 @@ def ekspor_iga(request, periode_id: Optional[int] = None):
                 "Tujuan", "Manfaat", "Hasil", "Anggaran", "Skor SID Terverifikasi"])
     n = 0
     for i in (Inovasi.objects.filter(periode=p, status=Inovasi.TERVERIFIKASI)
-              .select_related("opd").prefetch_related("nilai__indikator")):
+              .select_related("opd").prefetch_related("nilai__indikator", "nilai__daftar_berkas")):
         if not i.layak:
             continue
         n += 1

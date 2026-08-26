@@ -313,6 +313,7 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
           <div className="space-y-3">
             {inovasi.bukti.map((b) => {
               const isFilled = b.pilihan > 0;
+              const hasBerkas = b.berkas.length > 0;
               return (
                 <div
                   key={b.indikator_id}
@@ -337,9 +338,10 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
                     </div>
 
                     {isFilled ? (
-                      <p className="text-xs text-emerald-700 font-medium">
+                      <p className={`text-xs font-medium ${hasBerkas ? 'text-emerald-700' : 'text-amber-600'}`}>
                         Parameter Terpilih ({b.pilihan}):{' '}
                         {b.pilihan === 1 ? b.parameter_1 : b.pilihan === 2 ? b.parameter_2 : b.parameter_3}
+                        {!hasBerkas && ' — skor belum terhitung, menunggu berkas'}
                       </p>
                     ) : (
                       <p className="text-xs text-rose-500 font-medium italic">Belum diisi oleh OPD</p>
@@ -543,6 +545,11 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Berkas Bukti Dukung Terunggah
                 </label>
+                {editPilihan > 0 && selectedIndikator.berkas.length === 0 && uploadingFiles.length === 0 && (
+                  <p className="text-[11px] text-amber-600 font-semibold mb-1">
+                    Skor baris ini tetap 0 sampai berkas diunggah — parameter saja tidak cukup.
+                  </p>
+                )}
                 {selectedIndikator.berkas.length > 0 ? (
                   <ul className="space-y-1 mb-2">
                     {selectedIndikator.berkas.map((b) => (

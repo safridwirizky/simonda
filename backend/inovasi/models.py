@@ -249,7 +249,7 @@ class Inovasi(models.Model):
                 continue
             if hanya_terverifikasi and n.verifikasi != NilaiSID.DITERIMA:
                 continue
-            total += iga.skor_baris(ind.bobot, n.pilihan)
+            total += n.skor
         return total
 
     @property
@@ -344,6 +344,10 @@ class NilaiSID(models.Model):
 
     @property
     def skor(self):
+        """Sama seperti SPD -- parameter terpilih belum menyumbang skor sampai
+        ada berkas bukti dukung yang diunggah."""
+        if not self.daftar_berkas.exists():
+            return Decimal("0")
         return iga.skor_baris(self.indikator.bobot, self.pilihan)
 
     def tandai_ulang(self):

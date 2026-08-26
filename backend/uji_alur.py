@@ -189,9 +189,19 @@ for ind in sid:
     c.put(f"/api/inovasi/{inv_id}/nilai/{ind.id}", isi,
           content_type="application/json", **kepala(t_op))
 d = c.get(f"/api/inovasi/{inv_id}", **kepala(t_op)).json()
-cek("skor SID sempurna 111", float(d["skor_klaim"]) == 111.0, d["skor_klaim"])
+cek("skor SID masih nol walau parameter terisi (belum ada berkas)",
+    float(d["skor_klaim"]) == 0.0, d["skor_klaim"])
 cek("tidak ada indikator wajib kosong", d["wajib_belum_terisi"] == [])
-cek("inovasi jadi layak", d["layak"] is True)
+cek("inovasi jadi layak walau skor masih nol (layak = kelengkapan data, bukan berkas)",
+    d["layak"] is True)
+
+for ind in sid:
+    c.post(f"/api/inovasi/{inv_id}/nilai/{ind.id}/berkas",
+           {"berkas": SimpleUploadedFile(f"sid-{ind.id}.pdf", b"isi SID uji",
+                                         content_type="application/pdf")},
+           **kepala(t_op))
+d = c.get(f"/api/inovasi/{inv_id}", **kepala(t_op)).json()
+cek("skor SID sempurna 111 setelah seluruh berkas diunggah", float(d["skor_klaim"]) == 111.0, d["skor_klaim"])
 
 video = next(x for x in d["bukti"] if x["nomor"] == 35)
 cek("indikator 35 Video berbobot 4", float(video["bobot"]) == 4.0, video["bobot"])
@@ -236,29 +246,38 @@ c.put(f"/api/inovasi/{inv_id}/nilai/{ind33.id}", {"pilihan": 3, "basis_ukur": "a
       content_type="application/json", **kepala(t_op))
 
 print("\n== Banyak berkas SID pada satu indikator, dan hapus berkas ==")
+bukti_awal = next(x for x in c.get(f"/api/inovasi/{inv_id}", **kepala(t_op)).json()["bukti"]
+                  if x["indikator_id"] == sid[0].id)
+jumlah_awal = len(bukti_awal["berkas"])  # sudah 1 dari pengisian massal di atas
+
 r = c.post(f"/api/inovasi/{inv_id}/nilai/{sid[0].id}/berkas",
            {"berkas": SimpleUploadedFile("sid-satu.pdf", b"berkas SID uji satu",
                                          content_type="application/pdf")},
            **kepala(t_op))
-cek("berkas SID pertama berhasil diunggah", r.status_code == 200, r.content[:200])
+cek("berkas SID tambahan pertama berhasil diunggah", r.status_code == 200, r.content[:200])
 r = c.post(f"/api/inovasi/{inv_id}/nilai/{sid[0].id}/berkas",
            {"berkas": SimpleUploadedFile("sid-dua.pdf", b"berkas SID uji dua",
                                          content_type="application/pdf")},
            **kepala(t_op))
-cek("berkas SID kedua berhasil diunggah tanpa menimpa", r.status_code == 200, r.content[:200])
+cek("berkas SID tambahan kedua berhasil diunggah tanpa menimpa", r.status_code == 200, r.content[:200])
 bukti_sid0 = next(x for x in c.get(f"/api/inovasi/{inv_id}", **kepala(t_op)).json()["bukti"]
                   if x["indikator_id"] == sid[0].id)
-cek("kedua berkas SID tersimpan sekaligus", len(bukti_sid0["berkas"]) == 2, bukti_sid0["berkas"])
+cek("kedua berkas tambahan tersimpan sekaligus, bukan menimpa yang lama",
+    len(bukti_sid0["berkas"]) == jumlah_awal + 2, bukti_sid0["berkas"])
 
+berkas_terbaru_id = bukti_sid0["berkas"][-1]["id"]
 cek("OPD lain tidak boleh hapus berkas SID orang lain",
-    c.delete(f"/api/inovasi/{inv_id}/nilai/{sid[0].id}/berkas/{bukti_sid0['berkas'][0]['id']}",
+    c.delete(f"/api/inovasi/{inv_id}/nilai/{sid[0].id}/berkas/{berkas_terbaru_id}",
              **kepala(t_op2)).status_code in (403, 404))
-r = c.delete(f"/api/inovasi/{inv_id}/nilai/{sid[0].id}/berkas/{bukti_sid0['berkas'][0]['id']}",
+r = c.delete(f"/api/inovasi/{inv_id}/nilai/{sid[0].id}/berkas/{berkas_terbaru_id}",
              **kepala(t_op))
 cek("pemilik berhasil hapus salah satu berkas SID", r.status_code == 200, r.content[:200])
 bukti_sid0_setelah = next(x for x in c.get(f"/api/inovasi/{inv_id}", **kepala(t_op)).json()["bukti"]
                           if x["indikator_id"] == sid[0].id)
-cek("tinggal satu berkas SID tersisa", len(bukti_sid0_setelah["berkas"]) == 1, bukti_sid0_setelah["berkas"])
+cek("satu berkas berkurang setelah hapus, sisanya tetap ada",
+    len(bukti_sid0_setelah["berkas"]) == jumlah_awal + 1, bukti_sid0_setelah["berkas"])
+cek("skor tetap terhitung karena masih ada berkas lain",
+    float(bukti_sid0_setelah["skor"]) == float(bukti_sid0_setelah["bobot"]) * 3, bukti_sid0_setelah["skor"])
 
 print("\n== Isolasi antar OPD ==")
 cek("OPD lain tidak melihat", c.get(f"/api/inovasi/{inv_id}", **kepala(t_op2)).status_code == 404)
@@ -303,6 +322,10 @@ def buat_lengkap(nama, urusan, token):
             isi["basis_ukur"] = "a"
         c.put(f"/api/inovasi/{iid}/nilai/{ind.id}", isi,
               content_type="application/json", **kepala(token))
+        c.post(f"/api/inovasi/{iid}/nilai/{ind.id}/berkas",
+               {"berkas": SimpleUploadedFile(f"sk-{iid}-{ind.id}.pdf", b"isi SID uji",
+                                             content_type="application/pdf")},
+               **kepala(token))
         c.post(f"/api/inovasi/{iid}/nilai/{ind.id}/verifikasi", {"keputusan": "diterima"},
                content_type="application/json", **kepala(t_vr))
     c.post(f"/api/inovasi/{iid}/ajukan", **kepala(token))
