@@ -43,6 +43,51 @@ export const URUSAN = [
   'Fungsi Penunjang / Sekretariat / Perencanaan',
 ];
 
+// Indikator SID 33 "Kemanfaatan Inovasi" (Lampiran II butir 33) punya 6 basis
+// ukur alternatif -- OPD memilih tepat satu, tiap basis punya ambang
+// parameter 1-3 sendiri (lihat PARAMETER_KEMANFAATAN di bawah).
+export const BASIS_KEMANFAATAN: { kode: string; label: string }[] = [
+  { kode: 'a', label: 'Jumlah penerima manfaat (orang)' },
+  { kode: 'b', label: 'Cakupan unit penerima manfaat (persentase dari unit sasaran)' },
+  { kode: 'c', label: 'Efisiensi belanja sebelum dan sesudah inovasi' },
+  { kode: 'd', label: 'Penambahan pendapatan sebelum dan sesudah inovasi' },
+  { kode: 'e', label: 'Jumlah produk yang dihasilkan atau diperjualbelikan' },
+  { kode: 'f', label: 'Tren kinerja positif dalam periode pengukuran' },
+];
+
+export const PARAMETER_KEMANFAATAN: Record<string, [string, string, string]> = {
+  a: [
+    'Cakupan penerima manfaat 1-200 orang',
+    'Cakupan penerima manfaat 201-500 orang',
+    'Cakupan penerima manfaat 501 orang atau lebih',
+  ],
+  b: [
+    'Cakupan unit penerima manfaat 5,00% s.d. 20,00% dari unit sasaran',
+    'Cakupan unit penerima manfaat 20,01% s.d. 50,00% dari unit sasaran',
+    'Cakupan unit penerima manfaat di atas 50,00% dari unit sasaran',
+  ],
+  c: [
+    'Efisiensi belanja sebesar 0,01% - 10,00%',
+    'Efisiensi belanja sebesar 10,01% - 20,00%',
+    'Efisiensi belanja sebesar 20,01% - 30,00%',
+  ],
+  d: [
+    'Penambahan pendapatan sebesar 0,01% - 9,99%',
+    'Penambahan pendapatan sebesar 10,00% - 19,99%',
+    'Penambahan pendapatan sebesar ≥20%',
+  ],
+  e: [
+    'Jumlah produk dihasilkan/diperjualbelikan 1-100 barang',
+    'Jumlah produk dihasilkan/diperjualbelikan 101-200 barang',
+    'Jumlah produk dihasilkan/diperjualbelikan lebih dari 200 barang',
+  ],
+  f: [
+    'Tren kinerja positif dalam 1 periode waktu pengukuran',
+    'Tren kinerja positif dalam 2 periode waktu pengukuran',
+    'Tren kinerja positif dalam 3 periode waktu pengukuran',
+  ],
+};
+
 // Kosong berarti origin yang sama (proxy Vite dev, atau Nginx di produksi).
 const API_BASE = import.meta.env.VITE_API_URL || '';
 

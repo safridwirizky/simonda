@@ -215,13 +215,23 @@ def daftar_berkas(n) -> list:
     ]
 
 
+def parameter_indikator(ind: Indikator, n) -> tuple:
+    """Indikator 33 (Kemanfaatan Inovasi) punya 6 basis ukur alternatif
+    (Lampiran II butir 33 a-f), masing-masing dengan ambang parameter 1-3
+    sendiri. Basis default "a" ditampilkan sebelum OPD memilih basisnya."""
+    if ind.nomor == 33:
+        basis = (n.basis_ukur if n else "") or "a"
+        return iga.PARAMETER_KEMANFAATAN.get(basis, iga.PARAMETER_KEMANFAATAN["a"])
+    return ind.parameter_1, ind.parameter_2, ind.parameter_3
+
+
 def baris_nilai(ind: Indikator, n) -> dict:
+    p1, p2, p3 = parameter_indikator(ind, n)
     return {
         "indikator_id": ind.id, "kode": ind.kode, "nomor": ind.nomor,
         "variabel": ind.variabel, "nama_indikator": ind.nama,
         "bobot": ind.bobot, "wajib": ind.wajib,
-        "parameter_1": ind.parameter_1, "parameter_2": ind.parameter_2,
-        "parameter_3": ind.parameter_3,
+        "parameter_1": p1, "parameter_2": p2, "parameter_3": p3,
         "pilihan": n.pilihan if n else 0,
         "basis_ukur": n.basis_ukur if n else "",
         "skor": n.skor if n else Decimal("0"),
@@ -372,6 +382,12 @@ def ubah_nilai(request, inovasi_id: int, indikator_id: int, data: BuktiIn):
                             aspek=Indikator.SID)
     if not 0 <= data.pilihan <= 3:
         raise HttpError(400, "Pilihan parameter harus 0 sampai 3.")
+    if ind.nomor == 33 and data.pilihan > 0 and data.basis_ukur not in dict(iga.BASIS_KEMANFAATAN):
+        raise HttpError(
+            400,
+            "Indikator 33 (Kemanfaatan Inovasi) wajib memilih satu basis ukur "
+            "(a-f) dulu -- tiap basis punya ambang parameter yang berbeda.",
+        )
 
     n, _ = NilaiSID.objects.get_or_create(inovasi=inv, indikator=ind)
     n.pilihan, n.catatan, n.tautan = data.pilihan, data.catatan, data.tautan

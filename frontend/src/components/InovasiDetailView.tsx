@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { InovasiDetail, NilaiBukti, UserProfile } from '../types';
+import { BASIS_KEMANFAATAN, PARAMETER_KEMANFAATAN } from '../api';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -454,16 +455,48 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
               </button>
             </div>
 
+            {/* Basis Ukur (khusus indikator 33: Kemanfaatan Inovasi, 6 basis a-f) */}
+            {selectedIndikator.nomor === 33 && (
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700">
+                  Basis Ukur Kemanfaatan (wajib pilih salah satu):
+                </label>
+                <select
+                  value={editBasisUkur}
+                  onChange={(e) => setEditBasisUkur(e.target.value)}
+                  className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">-- Pilih basis ukur --</option>
+                  {BASIS_KEMANFAATAN.map((b) => (
+                    <option key={b.kode} value={b.kode}>
+                      {b.kode.toUpperCase()} - {b.label}
+                    </option>
+                  ))}
+                </select>
+                {!editBasisUkur && editPilihan > 0 && (
+                  <p className="text-[11px] text-amber-600 font-semibold">
+                    Pilih basis ukur dulu — ambang parameter di bawah berbeda untuk tiap basis.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Parameter Selection Cards */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-700">Pilih Parameter Penilaian (0 - 3):</label>
-              
-              {[
-                { val: 0, label: '0 - Belum Memenuhi / Kosong' },
-                { val: 1, label: `1 - ${selectedIndikator.parameter_1}` },
-                { val: 2, label: `2 - ${selectedIndikator.parameter_2}` },
-                { val: 3, label: `3 - ${selectedIndikator.parameter_3}` },
-              ].map((opt) => (
+
+              {(() => {
+                const [p1, p2, p3] =
+                  selectedIndikator.nomor === 33
+                    ? PARAMETER_KEMANFAATAN[editBasisUkur || 'a']
+                    : [selectedIndikator.parameter_1, selectedIndikator.parameter_2, selectedIndikator.parameter_3];
+                return [
+                  { val: 0, label: '0 - Belum Memenuhi / Kosong' },
+                  { val: 1, label: `1 - ${p1}` },
+                  { val: 2, label: `2 - ${p2}` },
+                  { val: 3, label: `3 - ${p3}` },
+                ];
+              })().map((opt) => (
                 <div
                   key={opt.val}
                   onClick={() => setEditPilihan(opt.val)}

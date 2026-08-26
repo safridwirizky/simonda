@@ -71,6 +71,17 @@ sebelum baris databasenya dibuang, jadi tidak ada berkas yang nyangkut tak
 terjangkau di R2 seperti pada model lama (satu `FileField` per baris, di mana
 unggahan kedua menimpa referensi ke berkas pertama tanpa menghapusnya).
 
+**Indikator 33 (Kemanfaatan Inovasi) punya 6 basis ukur, OPD pilih satu.**
+Sesuai Lampiran II butir 33 a–f, ambang parameter 1–3 berbeda tergantung basis
+yang dipakai (jumlah penerima manfaat, cakupan unit, efisiensi belanja,
+penambahan pendapatan, jumlah produk, atau tren kinerja) — bobot indikatornya
+sama (3) untuk semua basis, tapi teks dan ambang parameternya tidak boleh
+tercampur. `iga.PARAMETER_KEMANFAATAN` menyimpan keenam set ambang itu;
+`NilaiSID.basis_ukur` menyimpan basis mana yang dipilih OPD, dan
+`baris_nilai()` di `api.py` menukar `parameter_1/2/3` yang ditampilkan sesuai
+basis tersimpan. Memilih parameter 1–3 tanpa memilih basis dulu ditolak API
+(400) karena "2" berarti hal yang berbeda di tiap basis.
+
 ---
 
 ## Memasang
@@ -144,7 +155,7 @@ sebagai berkas statis di depan Gunicorn.
 cd backend
 export ALLOWED_HOSTS=localhost,127.0.0.1,testserver
 python uji_skor.py        # 32 pemeriksaan katalog dan rumus
-python uji_alur.py        # 70 pemeriksaan alur kerja
+python uji_alur.py        # 79 pemeriksaan alur kerja
 python uji_kontrak.py     # 42 pemeriksaan kontrak API terhadap antarmuka
 ```
 

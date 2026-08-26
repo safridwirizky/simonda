@@ -58,9 +58,10 @@ sid = list(Indikator.objects.filter(periode=periode, aspek="sid").order_by("nomo
 spd = list(Indikator.objects.filter(periode=periode, aspek="spd").order_by("nomor", "sub"))
 
 # Bersihkan sisa unggahan uji dari run sebelumnya supaya setiap run mulai dari
-# nol, KECUALI spd[0] -- indikator itu menyimpan berkas bukti dukung sungguhan
-# milik pengguna, skrip uji tidak pernah menyentuhnya sama sekali.
-for n in NilaiSPD.objects.filter(periode=periode).exclude(indikator=spd[0]):
+# nol. PERINGATAN: skrip ini menghapus SELURUH baris NilaiSPD periode aktif
+# tanpa pengecualian -- jangan pernah dijalankan terhadap basis data yang
+# menyimpan berkas bukti dukung sungguhan milik pengguna.
+for n in NilaiSPD.objects.filter(periode=periode):
     for b in n.daftar_berkas.all():
         b.berkas.delete(save=False)
         b.delete()
@@ -78,11 +79,7 @@ print("\n== Mengisi indikator SPD ==")
 for ind in spd:
     c.put(f"/api/spd/{ind.id}", {"pilihan": 2, "keterangan": "dokumen terlampir"},
           content_type="application/json", **kepala(t_vr))
-# spd[0] dikecualikan dari penjumlahan ini -- baris itu sudah punya berkas
-# bukti dukung sungguhan sejak awal (lihat pembersihan di atas), jadi skornya
-# sudah lebih dari nol sebelum langkah unggah manapun di skrip ini.
-total_spd_tanpa_berkas = sum(float(x["skor"]) for x in c.get("/api/spd", **kepala(t_vr)).json()
-                             if x["indikator_id"] != spd[0].id)
+total_spd_tanpa_berkas = sum(float(x["skor"]) for x in c.get("/api/spd", **kepala(t_vr)).json())
 cek("skor SPD masih nol walau parameter terisi (belum ada berkas)",
     total_spd_tanpa_berkas == 0.0, total_spd_tanpa_berkas)
 
@@ -134,9 +131,7 @@ baris_tanpa_berkas = next(x for x in c.get("/api/spd", **kepala(t_vr)).json()
 cek("skor kembali nol setelah berkas terakhir dihapus", float(baris_tanpa_berkas["skor"]) == 0.0,
     baris_tanpa_berkas["skor"])
 
-# spd[0] sengaja tidak disentuh skrip uji -- indikator itu memegang berkas
-# bukti dukung sungguhan yang sudah diunggah pengguna, bukan data uji.
-for ind in spd[1:]:
+for ind in spd:
     c.post(f"/api/spd/{ind.id}/berkas",
            {"berkas": SimpleUploadedFile(f"sk-{ind.id}.pdf", b"isi SK SPD uji", content_type="application/pdf")},
            **kepala(t_vr))
@@ -188,7 +183,10 @@ cek("pilihan di luar 0-3 ditolak",
           content_type="application/json", **kepala(t_op)).status_code == 400)
 
 for ind in sid:
-    c.put(f"/api/inovasi/{inv_id}/nilai/{ind.id}", {"pilihan": 3, "catatan": "SK terlampir"},
+    isi = {"pilihan": 3, "catatan": "SK terlampir"}
+    if ind.nomor == 33:
+        isi["basis_ukur"] = "a"
+    c.put(f"/api/inovasi/{inv_id}/nilai/{ind.id}", isi,
           content_type="application/json", **kepala(t_op))
 d = c.get(f"/api/inovasi/{inv_id}", **kepala(t_op)).json()
 cek("skor SID sempurna 111", float(d["skor_klaim"]) == 111.0, d["skor_klaim"])
@@ -198,6 +196,44 @@ cek("inovasi jadi layak", d["layak"] is True)
 video = next(x for x in d["bukti"] if x["nomor"] == 35)
 cek("indikator 35 Video berbobot 4", float(video["bobot"]) == 4.0, video["bobot"])
 cek("skor maksimum video 12", float(video["skor_maks"]) == 12.0)
+
+print("\n== Indikator 33 Kemanfaatan Inovasi: 6 basis ukur alternatif (a-f) ==")
+ind33 = next(i for i in sid if i.nomor == 33)
+cek("indikator 33 wajib pilih basis ukur sebelum menentukan parameter",
+    c.put(f"/api/inovasi/{inv_id}/nilai/{ind33.id}", {"pilihan": 1},
+          content_type="application/json", **kepala(t_op)).status_code == 400)
+cek("basis ukur tidak dikenal ditolak",
+    c.put(f"/api/inovasi/{inv_id}/nilai/{ind33.id}", {"pilihan": 1, "basis_ukur": "z"},
+          content_type="application/json", **kepala(t_op)).status_code == 400)
+
+r = c.put(f"/api/inovasi/{inv_id}/nilai/{ind33.id}", {"pilihan": 1, "basis_ukur": "c"},
+          content_type="application/json", **kepala(t_op))
+cek("basis c diterima", r.status_code == 200, r.content[:200])
+baris33 = r.json()
+cek("basis c menampilkan ambang efisiensi belanja, bukan jumlah penerima manfaat",
+    "Efisiensi belanja" in baris33["parameter_1"], baris33["parameter_1"])
+cek("parameter_1 basis c sesuai Lampiran II",
+    baris33["parameter_1"] == "Efisiensi belanja sebesar 0,01% - 10,00%", baris33["parameter_1"])
+
+r = c.put(f"/api/inovasi/{inv_id}/nilai/{ind33.id}", {"pilihan": 2, "basis_ukur": "e"},
+          content_type="application/json", **kepala(t_op))
+baris33e = r.json()
+cek("ganti ke basis e langsung mengganti wording parameter",
+    baris33e["parameter_2"] == "Jumlah produk dihasilkan/diperjualbelikan 101-200 barang",
+    baris33e["parameter_2"])
+cek("basis lama (c) tidak lagi muncul setelah ganti basis",
+    "Efisiensi belanja" not in baris33e["parameter_1"], baris33e["parameter_1"])
+
+d33 = next(x for x in c.get(f"/api/inovasi/{inv_id}", **kepala(t_op)).json()["bukti"]
+          if x["nomor"] == 33)
+cek("basis_ukur tersimpan dan terbaca ulang dari GET detail", d33["basis_ukur"] == "e", d33["basis_ukur"])
+cek("skor indikator 33 tetap bobot x pilihan terlepas dari basis (2 x 3 = 6)",
+    float(d33["skor"]) == 6.0, d33["skor"])
+
+# kembalikan ke basis "a" default (dipakai loop pengisian sebelumnya) supaya
+# skor SID total 111 di atas tidak berubah akibat eksplorasi basis ini
+c.put(f"/api/inovasi/{inv_id}/nilai/{ind33.id}", {"pilihan": 3, "basis_ukur": "a", "catatan": "SK terlampir"},
+      content_type="application/json", **kepala(t_op))
 
 print("\n== Banyak berkas SID pada satu indikator, dan hapus berkas ==")
 r = c.post(f"/api/inovasi/{inv_id}/nilai/{sid[0].id}/berkas",
@@ -262,7 +298,10 @@ def buat_lengkap(nama, urusan, token):
                content_type="application/json", **kepala(token))
     iid = r.json()["id"]
     for ind in sid:
-        c.put(f"/api/inovasi/{iid}/nilai/{ind.id}", {"pilihan": 3},
+        isi = {"pilihan": 3}
+        if ind.nomor == 33:
+            isi["basis_ukur"] = "a"
+        c.put(f"/api/inovasi/{iid}/nilai/{ind.id}", isi,
               content_type="application/json", **kepala(token))
         c.post(f"/api/inovasi/{iid}/nilai/{ind.id}/verifikasi", {"keputusan": "diterima"},
                content_type="application/json", **kepala(t_vr))
