@@ -139,6 +139,8 @@ export default function App() {
   // Auth Handlers
   const handleLogin = async (username: string, pass: string) => {
     await login(username, pass);
+    setSelectedInovasiId(null);
+    setActiveTab('dashboard');
     await loadInitialData();
   };
 
