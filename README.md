@@ -41,7 +41,7 @@ Struktur penilaian mengikuti Lampiran II:
 
 Tiap indikator punya tiga parameter. Skor satu baris = bobot x parameter terpilih.
 
-## Tiga aturan yang menentukan skor
+## Empat aturan yang menentukan skor
 
 **Seluruh 6 urusan wajib pelayanan dasar harus terpenuhi.** Kurang satu saja,
 Skor Jumlah Inovasi jadi nol — hilang sampai 76 poin atau 30,4% dari skor
@@ -53,6 +53,11 @@ rata-rata kematangan ikut turun. Sistem menampilkan berapa "kursi kosong" tersis
 **Syarat umur inovasi.** Penerapan harus antara 1 Januari 2024 dan 31 Desember
 2025, atau ada pengembangan dalam rentang itu. Rancang bangun minimal 300 kata.
 Inovasi yang gagal syarat ini ditandai dan tidak ikut diekspor.
+
+**SPD tanpa berkas tidak menyumbang skor.** Memilih parameter 1–3 di indikator
+SPD daerah tidak langsung terhitung — skor baris itu tetap nol sampai
+Bapperida mengunggah berkas bukti dukungnya. Klaim tanpa dokumen tidak boleh
+memengaruhi proyeksi indeks.
 
 Setiap kali OPD mengubah bukti, status verifikasinya otomatis kembali ke
 "menunggu". Bukti lama tidak bisa diam-diam diganti setelah disetujui.
@@ -130,7 +135,7 @@ sebagai berkas statis di depan Gunicorn.
 cd backend
 export ALLOWED_HOSTS=localhost,127.0.0.1,testserver
 python uji_skor.py        # 32 pemeriksaan katalog dan rumus
-python uji_alur.py        # 54 pemeriksaan alur kerja
+python uji_alur.py        # 56 pemeriksaan alur kerja
 python uji_kontrak.py     # 40 pemeriksaan kontrak API terhadap antarmuka
 ```
 

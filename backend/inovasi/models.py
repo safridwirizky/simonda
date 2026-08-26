@@ -139,6 +139,10 @@ class NilaiSPD(models.Model):
 
     @property
     def skor(self):
+        """Parameter terpilih belum menyumbang skor sampai ada berkas bukti
+        dukung yang diunggah -- klaim tanpa dokumen tidak boleh terhitung."""
+        if not self.berkas:
+            return Decimal("0")
         return iga.skor_baris(self.indikator.bobot, self.pilihan)
 
 

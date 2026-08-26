@@ -69,7 +69,7 @@ for ind in spd:
     c.put(f"/api/spd/{ind.id}", {"pilihan": 2, "keterangan": "dokumen terlampir"},
           content_type="application/json", **kepala(t_vr))
 total_spd = sum(float(x["skor"]) for x in c.get("/api/spd", **kepala(t_vr)).json())
-cek("skor SPD semua parameter 2 = 42", total_spd == 42.0, total_spd)
+cek("skor SPD masih nol walau parameter terisi (belum ada berkas)", total_spd == 0.0, total_spd)
 
 cek("operator tidak boleh unggah berkas SPD",
     c.post(f"/api/spd/{spd[0].id}/berkas",
@@ -79,9 +79,18 @@ r = c.post(f"/api/spd/{spd[0].id}/berkas",
            {"berkas": SimpleUploadedFile("sk-spd.pdf", b"isi SK SPD uji", content_type="application/pdf")},
            **kepala(t_vr))
 cek("verifikator berhasil unggah berkas SPD", r.status_code == 200, r.content[:200])
-berkas_url_spd = next(x["berkas_url"] for x in c.get("/api/spd", **kepala(t_vr)).json()
-                       if x["indikator_id"] == spd[0].id)
-cek("berkas_url SPD terisi setelah unggah", bool(berkas_url_spd), berkas_url_spd)
+spd_setelah_satu_berkas = c.get("/api/spd", **kepala(t_vr)).json()
+baris_pertama = next(x for x in spd_setelah_satu_berkas if x["indikator_id"] == spd[0].id)
+cek("berkas_url SPD terisi setelah unggah", bool(baris_pertama["berkas_url"]), baris_pertama["berkas_url"])
+cek("skor baris itu langsung terhitung begitu berkas ada",
+    float(baris_pertama["skor"]) == float(baris_pertama["bobot"]) * 2, baris_pertama["skor"])
+
+for ind in spd[1:]:
+    c.post(f"/api/spd/{ind.id}/berkas",
+           {"berkas": SimpleUploadedFile(f"sk-{ind.id}.pdf", b"isi SK SPD uji", content_type="application/pdf")},
+           **kepala(t_vr))
+total_spd = sum(float(x["skor"]) for x in c.get("/api/spd", **kepala(t_vr)).json())
+cek("skor SPD semua parameter 2 = 42 setelah seluruh berkas diunggah", total_spd == 42.0, total_spd)
 
 print("\n== Membuat inovasi ==")
 r = c.post("/api/inovasi", {

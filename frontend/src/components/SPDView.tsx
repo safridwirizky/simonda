@@ -87,6 +87,7 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
       <div className="space-y-3">
         {spdData.map((item) => {
           const isFilled = item.pilihan > 0;
+          const hasBerkas = !!item.berkas_url;
           return (
             <div
               key={item.indikator_id}
@@ -111,9 +112,10 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
                 </div>
 
                 {isFilled ? (
-                  <p className="text-xs text-emerald-700 font-medium">
+                  <p className={`text-xs font-medium ${hasBerkas ? 'text-emerald-700' : 'text-amber-600'}`}>
                     Parameter Terpilih ({item.pilihan}):{' '}
                     {item.pilihan === 1 ? item.parameter_1 : item.pilihan === 2 ? item.parameter_2 : item.parameter_3}
+                    {!hasBerkas && ' — skor belum terhitung, menunggu berkas'}
                   </p>
                 ) : (
                   <p className="text-xs text-rose-500 font-medium italic">Belum diisi parameter</p>
@@ -129,10 +131,16 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
                 </div>
 
                 {isFilled && (
-                  <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Terisi</span>
-                  </span>
+                  hasBerkas ? (
+                    <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Terisi</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                      <span>Menunggu Berkas</span>
+                    </span>
+                  )
                 )}
               </div>
             </div>
@@ -209,6 +217,11 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
                 <label className="block font-semibold text-slate-700 mb-1">
                   Unggah Berkas Bukti Dukung (Maks 10MB)
                 </label>
+                {editPilihan > 0 && !selectedSpd.berkas_url && !uploadingFile && (
+                  <p className="text-[11px] text-amber-600 font-semibold mb-1">
+                    Skor baris ini tetap 0 sampai berkas diunggah — parameter saja tidak cukup.
+                  </p>
+                )}
                 <input
                   type="file"
                   onChange={(e) => setUploadingFile(e.target.files?.[0] || null)}
