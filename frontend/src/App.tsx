@@ -23,10 +23,12 @@ import {
   verifyInovasi,
   updateNilaiBukti,
   uploadBerkasBukti,
+  deleteBerkasBukti,
   verifyNilaiBukti,
   fetchSpdData,
   updateSpd,
   uploadBerkasSpd,
+  deleteBerkasSpd,
   fetchRekapOpd,
   fetchOpdList,
   exportIgaCsv,
@@ -221,6 +223,13 @@ export default function App() {
     setSelectedInovasiDetail(updated);
   };
 
+  const handleDeleteBerkas = async (indikatorId: number, berkasId: number) => {
+    if (!selectedInovasiDetail) return;
+    await deleteBerkasBukti(selectedInovasiDetail.id, indikatorId, berkasId);
+    const updated = await fetchInovasiDetail(selectedInovasiDetail.id);
+    setSelectedInovasiDetail(updated);
+  };
+
   const handleVerifyNilai = async (
     indikatorId: number,
     data: { keputusan: 'menunggu' | 'diterima' | 'ditolak'; catatan: string }
@@ -244,6 +253,11 @@ export default function App() {
 
   const handleUploadBerkasSpd = async (indikatorId: number, file: File) => {
     await uploadBerkasSpd(indikatorId, file);
+    await loadInitialData();
+  };
+
+  const handleDeleteBerkasSpd = async (indikatorId: number, berkasId: number) => {
+    await deleteBerkasSpd(indikatorId, berkasId);
     await loadInitialData();
   };
 
@@ -346,6 +360,7 @@ export default function App() {
             onVerifyInovasi={handleVerifyInovasi}
             onUpdateNilai={handleUpdateNilai}
             onUploadBerkas={handleUploadBerkas}
+            onDeleteBerkas={handleDeleteBerkas}
             onVerifyNilai={handleVerifyNilai}
           />
         ) : activeTab === 'dashboard' ? (
@@ -375,6 +390,7 @@ export default function App() {
             spdData={spdData}
             onUpdateSpd={handleUpdateSpd}
             onUploadBerkas={handleUploadBerkasSpd}
+            onDeleteBerkas={handleDeleteBerkasSpd}
           />
         ) : activeTab === 'rekap' ? (
           <RekapOPDView

@@ -32,6 +32,7 @@ interface InovasiDetailViewProps {
     data: { pilihan: number; basis_ukur?: string; catatan?: string; tautan?: string }
   ) => Promise<void>;
   onUploadBerkas: (indikatorId: number, file: File) => Promise<void>;
+  onDeleteBerkas: (indikatorId: number, berkasId: number) => Promise<void>;
   onVerifyNilai: (
     indikatorId: number,
     data: { keputusan: 'menunggu' | 'diterima' | 'ditolak'; catatan: string }
@@ -48,6 +49,7 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
   onVerifyInovasi,
   onUpdateNilai,
   onUploadBerkas,
+  onDeleteBerkas,
   onVerifyNilai,
 }) => {
   const [activeTab, setActiveTab] = useState<'detail' | 'indikator'>('indikator');
@@ -59,11 +61,12 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
   const [editBasisUkur, setEditBasisUkur] = useState<string>('');
   const [editCatatan, setEditCatatan] = useState<string>('');
   const [editTautan, setEditTautan] = useState<string>('');
-  const [uploadingFile, setUploadingFile] = useState<File | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [verifDecision, setVerifDecision] = useState<'diterima' | 'ditolak'>('diterima');
   const [verifIndikatorCatatan, setVerifIndikatorCatatan] = useState<string>('');
 
   const [saving, setSaving] = useState(false);
+  const [deletingBerkasId, setDeletingBerkasId] = useState<number | null>(null);
 
   const openIndikatorModal = (b: NilaiBukti) => {
     setSelectedIndikator(b);
@@ -71,7 +74,7 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
     setEditBasisUkur(b.basis_ukur || '');
     setEditCatatan(b.catatan || '');
     setEditTautan(b.tautan || '');
-    setUploadingFile(null);
+    setUploadingFiles([]);
     setVerifDecision(b.verifikasi === 'ditolak' ? 'ditolak' : 'diterima');
     setVerifIndikatorCatatan(b.catatan_verifikator || '');
   };
@@ -87,8 +90,8 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
         tautan: editTautan,
       });
 
-      if (uploadingFile) {
-        await onUploadBerkas(selectedIndikator.indikator_id, uploadingFile);
+      for (const file of uploadingFiles) {
+        await onUploadBerkas(selectedIndikator.indikator_id, file);
       }
 
       setSelectedIndikator(null);
@@ -96,6 +99,23 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
       alert(e.message || 'Gagal menyimpan data indicator.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteBerkas = async (berkasId: number) => {
+    if (!selectedIndikator) return;
+    if (!confirm('Hapus berkas ini? Berkas akan dihapus permanen dari penyimpanan.')) return;
+    setDeletingBerkasId(berkasId);
+    try {
+      await onDeleteBerkas(selectedIndikator.indikator_id, berkasId);
+      setSelectedIndikator({
+        ...selectedIndikator,
+        berkas: selectedIndikator.berkas.filter((b) => b.id !== berkasId),
+      });
+    } catch (e: any) {
+      alert(e.message || 'Gagal menghapus berkas.');
+    } finally {
+      setDeletingBerkasId(null);
     }
   };
 
@@ -488,23 +508,55 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Unggah File PDF / Dokumen Bukti (Maks 10MB)
+                  Berkas Bukti Dukung Terunggah
+                </label>
+                {selectedIndikator.berkas.length > 0 ? (
+                  <ul className="space-y-1 mb-2">
+                    {selectedIndikator.berkas.map((b) => (
+                      <li
+                        key={b.id}
+                        className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5"
+                      >
+                        <a
+                          href={b.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center space-x-1 text-xs text-emerald-600 font-semibold hover:underline min-w-0"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{b.nama_asli}</span>
+                        </a>
+                        <button
+                          type="button"
+                          disabled={deletingBerkasId === b.id}
+                          onClick={() => handleDeleteBerkas(b.id)}
+                          className="text-rose-500 hover:text-rose-700 shrink-0 disabled:opacity-50"
+                          title="Hapus berkas ini"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-slate-400 italic mb-2">Belum ada berkas diunggah.</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Tambah Berkas Baru (boleh lebih dari satu, maks 10MB per berkas)
                 </label>
                 <input
                   type="file"
-                  onChange={(e) => setUploadingFile(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => setUploadingFiles(Array.from(e.target.files || []))}
                   className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
                 />
-                {selectedIndikator.berkas_url && (
-                  <a
-                    href={selectedIndikator.berkas_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center space-x-1 text-xs text-emerald-600 font-semibold hover:underline mt-1"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Lihat Berkas Terunggah</span>
-                  </a>
+                {uploadingFiles.length > 0 && (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {uploadingFiles.length} berkas dipilih, akan diunggah saat disimpan.
+                  </p>
                 )}
               </div>
             </div>

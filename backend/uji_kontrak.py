@@ -138,8 +138,9 @@ punya("detail", d,
 punya("baris bukti", d["bukti"][0],
       ["indikator_id", "kode", "nomor", "variabel", "nama_indikator", "bobot", "wajib",
        "parameter_1", "parameter_2", "parameter_3", "pilihan", "basis_ukur", "skor",
-       "skor_maks", "catatan", "tautan", "berkas_url", "verifikasi",
+       "skor_maks", "catatan", "tautan", "berkas", "verifikasi",
        "catatan_verifikator"])
+cek("berkas adalah daftar", isinstance(d["bukti"][0]["berkas"], list))
 cek("20 baris bukti", len(d["bukti"]) == 20, len(d["bukti"]))
 cek("bobot bukan nol", all(float(b["bobot"]) > 0 for b in d["bukti"]))
 cek("skor_maks = bobot x 3",
@@ -162,7 +163,8 @@ s = c.get("/api/spd", **kepala(t_vr)).json()
 punya("baris SPD", s[0],
       ["indikator_id", "kode", "variabel", "nama", "bobot", "wajib", "parameter_1",
        "parameter_2", "parameter_3", "pilihan", "skor", "skor_maks", "keterangan",
-       "tautan", "berkas_url"])
+       "tautan", "berkas"])
+cek("berkas SPD adalah daftar", isinstance(s[0]["berkas"], list))
 cek("20 baris SPD", len(s) == 20, len(s))
 cek("3 variabel untuk pengelompokan", len({b["variabel"] for b in s}) == 3,
     {b["variabel"] for b in s})

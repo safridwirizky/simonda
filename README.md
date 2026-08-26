@@ -62,6 +62,15 @@ memengaruhi proyeksi indeks.
 Setiap kali OPD mengubah bukti, status verifikasinya otomatis kembali ke
 "menunggu". Bukti lama tidak bisa diam-diam diganti setelah disetujui.
 
+**Satu indikator boleh punya banyak berkas.** Mengunggah berkas baru menambah
+daftar, bukan menimpa berkas sebelumnya — model `BerkasSPD`/`BerkasSID`
+menyimpan tiap berkas sebagai baris tersendiri (relasi satu-ke-banyak ke
+`NilaiSPD`/`NilaiSID`). Setiap berkas juga bisa dihapus satu per satu; hapus
+memanggil `storage.delete()` sungguhan lewat `FileField.delete(save=False)`
+sebelum baris databasenya dibuang, jadi tidak ada berkas yang nyangkut tak
+terjangkau di R2 seperti pada model lama (satu `FileField` per baris, di mana
+unggahan kedua menimpa referensi ke berkas pertama tanpa menghapusnya).
+
 ---
 
 ## Memasang
@@ -135,8 +144,8 @@ sebagai berkas statis di depan Gunicorn.
 cd backend
 export ALLOWED_HOSTS=localhost,127.0.0.1,testserver
 python uji_skor.py        # 32 pemeriksaan katalog dan rumus
-python uji_alur.py        # 56 pemeriksaan alur kerja
-python uji_kontrak.py     # 40 pemeriksaan kontrak API terhadap antarmuka
+python uji_alur.py        # 70 pemeriksaan alur kerja
+python uji_kontrak.py     # 42 pemeriksaan kontrak API terhadap antarmuka
 ```
 
 `uji_skor.py` membuktikan ulang angka resmi pedoman dari bobot yang dimasukkan.

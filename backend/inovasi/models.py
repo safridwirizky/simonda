@@ -126,7 +126,6 @@ class NilaiSPD(models.Model):
         help_text="0 belum diisi, 1-3 parameter terpilih")
     keterangan = models.TextField(blank=True)
     tautan = models.URLField(blank=True, max_length=500)
-    berkas = models.FileField(upload_to="spd/%Y/", blank=True)
     diperbarui_oleh = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
                                         on_delete=models.SET_NULL, related_name="+")
     diperbarui_pada = models.DateTimeField(auto_now=True)
@@ -141,9 +140,26 @@ class NilaiSPD(models.Model):
     def skor(self):
         """Parameter terpilih belum menyumbang skor sampai ada berkas bukti
         dukung yang diunggah -- klaim tanpa dokumen tidak boleh terhitung."""
-        if not self.berkas:
+        if not self.daftar_berkas.exists():
             return Decimal("0")
         return iga.skor_baris(self.indikator.bobot, self.pilihan)
+
+
+class BerkasSPD(models.Model):
+    """Satu berkas bukti dukung untuk satu indikator SPD. Banyak berkas boleh
+    menumpuk pada indikator yang sama -- unggahan baru tidak menimpa yang lama."""
+
+    nilai = models.ForeignKey(NilaiSPD, on_delete=models.CASCADE, related_name="daftar_berkas")
+    berkas = models.FileField(upload_to="spd/%Y/")
+    nama_asli = models.CharField(max_length=255, blank=True)
+    diunggah_oleh = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
+                                      on_delete=models.SET_NULL, related_name="+")
+    diunggah_pada = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["diunggah_pada"]
+        verbose_name = "Berkas SPD"
+        verbose_name_plural = "Berkas SPD"
 
 
 class Inovasi(models.Model):
@@ -290,8 +306,8 @@ class Inovasi(models.Model):
 
 
 def path_bukti(instance, filename):
-    return (f"bukti/{instance.inovasi.periode.tahun}/{instance.inovasi.opd.kode}/"
-            f"{instance.inovasi_id}/{filename}")
+    return (f"bukti/{instance.nilai.inovasi.periode.tahun}/{instance.nilai.inovasi.opd.kode}/"
+            f"{instance.nilai.inovasi_id}/{filename}")
 
 
 class NilaiSID(models.Model):
@@ -311,10 +327,6 @@ class NilaiSID(models.Model):
                                   help_text="Untuk indikator 33, basis a sampai f")
     catatan = models.TextField(blank=True)
     tautan = models.URLField(blank=True, max_length=500)
-    berkas = models.FileField(
-        upload_to=path_bukti, blank=True,
-        validators=[FileExtensionValidator(
-            ["pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "mp4"])])
 
     verifikasi = models.CharField(max_length=15, choices=VERIFIKASI, default=MENUNGGU)
     catatan_verifikator = models.TextField(blank=True)
@@ -339,6 +351,27 @@ class NilaiSID(models.Model):
         self.verifikasi = self.MENUNGGU
         self.catatan_verifikator = ""
         self.diverifikasi_oleh = None
+
+
+class BerkasSID(models.Model):
+    """Satu berkas bukti dukung untuk satu indikator SID pada satu inovasi.
+    Banyak berkas boleh menumpuk pada indikator yang sama -- unggahan baru
+    tidak menimpa yang lama."""
+
+    nilai = models.ForeignKey(NilaiSID, on_delete=models.CASCADE, related_name="daftar_berkas")
+    berkas = models.FileField(
+        upload_to=path_bukti,
+        validators=[FileExtensionValidator(
+            ["pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "mp4"])])
+    nama_asli = models.CharField(max_length=255, blank=True)
+    diunggah_oleh = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
+                                      on_delete=models.SET_NULL, related_name="+")
+    diunggah_pada = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["diunggah_pada"]
+        verbose_name = "Berkas SID"
+        verbose_name_plural = "Berkas SID"
 
 
 class LogAktivitas(models.Model):

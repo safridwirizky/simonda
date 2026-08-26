@@ -83,6 +83,13 @@ class IndikatorOut(Schema):
 
 # ------------------------------- bukti ------------------------------
 
+class BerkasOut(Schema):
+    id: int
+    url: str
+    nama_asli: str
+    diunggah_pada: datetime
+
+
 class BuktiOut(Schema):
     indikator_id: int
     kode: str
@@ -100,7 +107,7 @@ class BuktiOut(Schema):
     skor_maks: float
     catatan: str = ""
     tautan: str = ""
-    berkas_url: Optional[str] = None
+    berkas: List[BerkasOut] = []
     verifikasi: str
     catatan_verifikator: str = ""
     diperbarui_pada: Optional[datetime] = None
@@ -134,7 +141,7 @@ class NilaiSPDOut(Schema):
     skor_maks: float
     keterangan: str = ""
     tautan: str = ""
-    berkas_url: Optional[str] = None
+    berkas: List[BerkasOut] = []
 
 
 class VerifikasiBuktiIn(Schema):

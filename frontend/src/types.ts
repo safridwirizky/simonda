@@ -55,6 +55,13 @@ export interface Indikator {
   aktif: boolean;
 }
 
+export interface BerkasFile {
+  id: number;
+  url: string;
+  nama_asli: string;
+  diunggah_pada: string;
+}
+
 export interface NilaiBukti {
   indikator_id: number;
   kode: string;
@@ -72,7 +79,7 @@ export interface NilaiBukti {
   skor_maks: number;
   catatan?: string;
   tautan?: string;
-  berkas_url?: string | null;
+  berkas: BerkasFile[];
   verifikasi: 'menunggu' | 'diterima' | 'ditolak';
   catatan_verifikator?: string;
   diperbarui_pada?: string | null;
@@ -139,7 +146,7 @@ export interface NilaiSPD {
   skor_maks: number;
   keterangan: string;
   tautan: string;
-  berkas_url?: string | null;
+  berkas: BerkasFile[];
 }
 
 export interface ProyeksiHitungan {

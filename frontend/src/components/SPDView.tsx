@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NilaiSPD } from '../types';
-import { FileSpreadsheet, Check, ExternalLink } from 'lucide-react';
+import { FileSpreadsheet, Check, ExternalLink, Trash2 } from 'lucide-react';
 
 interface SPDViewProps {
   spdData: NilaiSPD[] | null;
@@ -9,15 +9,17 @@ interface SPDViewProps {
     data: { pilihan: number; keterangan?: string; tautan?: string }
   ) => Promise<void>;
   onUploadBerkas: (indikatorId: number, file: File) => Promise<void>;
+  onDeleteBerkas: (indikatorId: number, berkasId: number) => Promise<void>;
 }
 
-export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUploadBerkas }) => {
+export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUploadBerkas, onDeleteBerkas }) => {
   const [selectedSpd, setSelectedSpd] = useState<NilaiSPD | null>(null);
   const [editPilihan, setEditPilihan] = useState<number>(0);
   const [editKeterangan, setEditKeterangan] = useState<string>('');
   const [editTautan, setEditTautan] = useState<string>('');
-  const [uploadingFile, setUploadingFile] = useState<File | null>(null);
+  const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   if (!spdData) {
     return (
@@ -35,7 +37,7 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
     setEditPilihan(item.pilihan);
     setEditKeterangan(item.keterangan || '');
     setEditTautan(item.tautan || '');
-    setUploadingFile(null);
+    setUploadingFiles([]);
   };
 
   const handleSaveSpd = async () => {
@@ -47,14 +49,31 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
         keterangan: editKeterangan,
         tautan: editTautan,
       });
-      if (uploadingFile) {
-        await onUploadBerkas(selectedSpd.indikator_id, uploadingFile);
+      for (const file of uploadingFiles) {
+        await onUploadBerkas(selectedSpd.indikator_id, file);
       }
       setSelectedSpd(null);
     } catch (e: any) {
       alert(e.message || 'Gagal menyimpan indikator SPD.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDeleteBerkas = async (berkasId: number) => {
+    if (!selectedSpd) return;
+    if (!confirm('Hapus berkas ini? Berkas akan dihapus permanen dari penyimpanan.')) return;
+    setDeletingId(berkasId);
+    try {
+      await onDeleteBerkas(selectedSpd.indikator_id, berkasId);
+      setSelectedSpd({
+        ...selectedSpd,
+        berkas: selectedSpd.berkas.filter((b) => b.id !== berkasId),
+      });
+    } catch (e: any) {
+      alert(e.message || 'Gagal menghapus berkas.');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -87,7 +106,7 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
       <div className="space-y-3">
         {spdData.map((item) => {
           const isFilled = item.pilihan > 0;
-          const hasBerkas = !!item.berkas_url;
+          const hasBerkas = item.berkas.length > 0;
           return (
             <div
               key={item.indikator_id}
@@ -134,7 +153,7 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
                   hasBerkas ? (
                     <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
                       <Check className="w-3.5 h-3.5" />
-                      <span>Terisi</span>
+                      <span>{item.berkas.length > 1 ? `Terisi (${item.berkas.length} berkas)` : 'Terisi'}</span>
                     </span>
                   ) : (
                     <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
@@ -215,28 +234,60 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  Unggah Berkas Bukti Dukung (Maks 10MB)
+                  Berkas Bukti Dukung Terunggah
                 </label>
-                {editPilihan > 0 && !selectedSpd.berkas_url && !uploadingFile && (
+                {selectedSpd.berkas.length > 0 ? (
+                  <ul className="space-y-1 mb-2">
+                    {selectedSpd.berkas.map((b) => (
+                      <li
+                        key={b.id}
+                        className="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5"
+                      >
+                        <a
+                          href={b.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center space-x-1 text-emerald-600 font-semibold hover:underline min-w-0"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                          <span className="truncate">{b.nama_asli}</span>
+                        </a>
+                        <button
+                          type="button"
+                          disabled={deletingId === b.id}
+                          onClick={() => handleDeleteBerkas(b.id)}
+                          className="text-rose-500 hover:text-rose-700 shrink-0 disabled:opacity-50"
+                          title="Hapus berkas ini"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-slate-400 italic mb-2">Belum ada berkas diunggah.</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Tambah Berkas Baru (boleh lebih dari satu, maks 10MB per berkas)
+                </label>
+                {editPilihan > 0 && selectedSpd.berkas.length === 0 && uploadingFiles.length === 0 && (
                   <p className="text-[11px] text-amber-600 font-semibold mb-1">
                     Skor baris ini tetap 0 sampai berkas diunggah — parameter saja tidak cukup.
                   </p>
                 )}
                 <input
                   type="file"
-                  onChange={(e) => setUploadingFile(e.target.files?.[0] || null)}
+                  multiple
+                  onChange={(e) => setUploadingFiles(Array.from(e.target.files || []))}
                   className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
                 />
-                {selectedSpd.berkas_url && (
-                  <a
-                    href={selectedSpd.berkas_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center space-x-1 text-xs text-emerald-600 font-semibold hover:underline mt-1"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Lihat Berkas Terunggah</span>
-                  </a>
+                {uploadingFiles.length > 0 && (
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {uploadingFiles.length} berkas dipilih, akan diunggah saat disimpan.
+                  </p>
                 )}
               </div>
             </div>

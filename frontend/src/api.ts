@@ -209,6 +209,14 @@ export async function uploadBerkasBukti(inovasiId: number, indikatorId: number, 
   if (!res.ok) throw new Error(await extractError(res, 'Gagal mengunggah berkas bukti'));
 }
 
+export async function deleteBerkasBukti(inovasiId: number, indikatorId: number, berkasId: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/inovasi/${inovasiId}/nilai/${indikatorId}/berkas/${berkasId}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error(await extractError(res, 'Gagal menghapus berkas bukti'));
+}
+
 export async function verifyNilaiBukti(
   inovasiId: number,
   indikatorId: number,
@@ -250,6 +258,14 @@ export async function uploadBerkasSpd(indikatorId: number, file: File): Promise<
     body: formData,
   });
   if (!res.ok) throw new Error(await extractError(res, 'Gagal mengunggah berkas SPD'));
+}
+
+export async function deleteBerkasSpd(indikatorId: number, berkasId: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/spd/${indikatorId}/berkas/${berkasId}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error(await extractError(res, 'Gagal menghapus berkas SPD'));
 }
 
 export async function fetchRekapOpd(): Promise<RekapOPD[]> {

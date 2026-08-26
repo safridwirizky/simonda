@@ -19,8 +19,8 @@ from ninja.files import UploadedFile
 from ninja.security import HttpBearer
 
 from . import iga
-from .models import (OPD, Indikator, Inovasi, LogAktivitas, NilaiSID, NilaiSPD,
-                     Periode, User)
+from .models import (OPD, BerkasSID, BerkasSPD, Indikator, Inovasi, LogAktivitas, NilaiSID,
+                     NilaiSPD, Periode, User)
 from .schemas import (
     AkunOPDIn, AkunOPDOut, BuktiIn, BuktiOut, HitunganOut, IndikatorOut, InovasiDetail,
     InovasiIn, InovasiRingkas, MasukIn, NilaiSPDIn, NilaiSPDOut, OPDRingkas, PeriodeOut,
@@ -67,7 +67,8 @@ def periode_aktif() -> Periode:
 
 
 def inovasi_terlihat(user: User):
-    qs = Inovasi.objects.select_related("opd", "periode").prefetch_related("nilai__indikator")
+    qs = Inovasi.objects.select_related("opd", "periode").prefetch_related(
+        "nilai__indikator", "nilai__daftar_berkas")
     if user.bisa_verifikasi:
         return qs
     if not user.opd_id:
@@ -203,6 +204,17 @@ def reset_sandi_akun_opd(request, user_id: int, data: ResetSandiIn):
 
 # ------------------------------- inovasi -------------------------------
 
+def daftar_berkas(n) -> list:
+    if not n:
+        return []
+    return [
+        {"id": b.id, "url": b.berkas.url,
+         "nama_asli": b.nama_asli or b.berkas.name.rsplit("/", 1)[-1],
+         "diunggah_pada": b.diunggah_pada}
+        for b in n.daftar_berkas.all()
+    ]
+
+
 def baris_nilai(ind: Indikator, n) -> dict:
     return {
         "indikator_id": ind.id, "kode": ind.kode, "nomor": ind.nomor,
@@ -216,7 +228,7 @@ def baris_nilai(ind: Indikator, n) -> dict:
         "skor_maks": ind.skor_maks,
         "catatan": n.catatan if n else "",
         "tautan": n.tautan if n else "",
-        "berkas_url": n.berkas.url if (n and n.berkas) else None,
+        "berkas": daftar_berkas(n),
         "verifikasi": n.verifikasi if n else NilaiSID.MENUNGGU,
         "catatan_verifikator": n.catatan_verifikator if n else "",
         "diperbarui_pada": n.diperbarui_pada if n else None,
@@ -379,13 +391,31 @@ def unggah_berkas(request, inovasi_id: int, indikator_id: int, berkas: UploadedF
         raise HttpError(413, "Ukuran berkas melebihi 10 MB. Kecilkan dulu atau kirim tautan.")
     ind = get_object_or_404(Indikator, id=indikator_id, periode=inv.periode)
     n, _ = NilaiSID.objects.get_or_create(inovasi=inv, indikator=ind)
-    n.berkas = berkas
+    BerkasSID.objects.create(nilai=n, berkas=berkas, nama_asli=berkas.name,
+                             diunggah_oleh=request.user)
     n.diperbarui_oleh = request.user
     if not request.user.bisa_verifikasi:
         n.tandai_ulang()
     n.save()
     LogAktivitas.catat(request.user, "unggah bukti", inv.id, str(ind))
     return {"pesan": "Berkas tersimpan."}
+
+
+@api.delete("/inovasi/{inovasi_id}/nilai/{indikator_id}/berkas/{berkas_id}", response=PesanOut)
+def hapus_berkas(request, inovasi_id: int, indikator_id: int, berkas_id: int):
+    inv = get_object_or_404(inovasi_terlihat(request.user), id=inovasi_id)
+    pastikan_boleh_ubah(request.user, inv)
+    ind = get_object_or_404(Indikator, id=indikator_id, periode=inv.periode)
+    b = get_object_or_404(BerkasSID, id=berkas_id, nilai__inovasi=inv, nilai__indikator=ind)
+    b.berkas.delete(save=False)
+    b.delete()
+    n = NilaiSID.objects.filter(inovasi=inv, indikator=ind).first()
+    if n and not request.user.bisa_verifikasi:
+        n.tandai_ulang()
+        n.diperbarui_oleh = request.user
+        n.save()
+    LogAktivitas.catat(request.user, "hapus bukti", inv.id, str(ind))
+    return {"pesan": "Berkas dihapus."}
 
 
 @api.post("/inovasi/{inovasi_id}/nilai/{indikator_id}/verifikasi", response=BuktiOut)
@@ -411,7 +441,7 @@ def verifikasi_nilai(request, inovasi_id: int, indikator_id: int, data: Verifika
 def daftar_spd(request):
     wajib_verifikator(request)
     p = periode_aktif()
-    ada = {n.indikator_id: n for n in p.nilai_spd.all()}
+    ada = {n.indikator_id: n for n in p.nilai_spd.prefetch_related("daftar_berkas")}
     keluar = []
     for ind in p.indikator.filter(aspek=Indikator.SPD, aktif=True):
         n = ada.get(ind.id)
@@ -423,7 +453,7 @@ def daftar_spd(request):
             "pilihan": n.pilihan if n else 0,
             "skor": n.skor if n else Decimal("0"), "skor_maks": ind.skor_maks,
             "keterangan": n.keterangan if n else "", "tautan": n.tautan if n else "",
-            "berkas_url": n.berkas.url if (n and n.berkas) else None,
+            "berkas": daftar_berkas(n),
         })
     return keluar
 
@@ -451,11 +481,24 @@ def unggah_berkas_spd(request, indikator_id: int, berkas: UploadedFile = File(..
     p = periode_aktif()
     ind = get_object_or_404(Indikator, id=indikator_id, periode=p, aspek=Indikator.SPD)
     n, _ = NilaiSPD.objects.get_or_create(periode=p, indikator=ind)
-    n.berkas = berkas
+    BerkasSPD.objects.create(nilai=n, berkas=berkas, nama_asli=berkas.name,
+                             diunggah_oleh=request.user)
     n.diperbarui_oleh = request.user
-    n.save()
+    n.save(update_fields=["diperbarui_oleh", "diperbarui_pada"])
     LogAktivitas.catat(request.user, "unggah bukti SPD", ind.kode, ind.nama)
     return {"pesan": "Berkas tersimpan."}
+
+
+@api.delete("/spd/{indikator_id}/berkas/{berkas_id}", response=PesanOut)
+def hapus_berkas_spd(request, indikator_id: int, berkas_id: int):
+    wajib_verifikator(request)
+    p = periode_aktif()
+    ind = get_object_or_404(Indikator, id=indikator_id, periode=p, aspek=Indikator.SPD)
+    b = get_object_or_404(BerkasSPD, id=berkas_id, nilai__indikator=ind, nilai__periode=p)
+    b.berkas.delete(save=False)
+    b.delete()
+    LogAktivitas.catat(request.user, "hapus bukti SPD", ind.kode, ind.nama)
+    return {"pesan": "Berkas dihapus."}
 
 
 # ------------------------------ statistik ------------------------------

@@ -13,7 +13,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: E402
 from django.test import Client  # noqa: E402
 
 from inovasi import iga  # noqa: E402
-from inovasi.models import OPD, Indikator, Inovasi, Periode, User  # noqa: E402
+from inovasi.models import OPD, Indikator, Inovasi, NilaiSPD, Periode, User  # noqa: E402
 
 c = Client()
 lolos = gagal = 0
@@ -57,6 +57,16 @@ print(f"  periode {periode.tahun}, pembagi minimal {periode.pembagi_minimal}, "
 sid = list(Indikator.objects.filter(periode=periode, aspek="sid").order_by("nomor"))
 spd = list(Indikator.objects.filter(periode=periode, aspek="spd").order_by("nomor", "sub"))
 
+# Bersihkan sisa unggahan uji dari run sebelumnya supaya setiap run mulai dari
+# nol, KECUALI spd[0] -- indikator itu menyimpan berkas bukti dukung sungguhan
+# milik pengguna, skrip uji tidak pernah menyentuhnya sama sekali.
+for n in NilaiSPD.objects.filter(periode=periode).exclude(indikator=spd[0]):
+    for b in n.daftar_berkas.all():
+        b.berkas.delete(save=False)
+        b.delete()
+    n.pilihan, n.keterangan, n.tautan = 0, "", ""
+    n.save()
+
 print("\n== Katalog tersedia lewat API ==")
 cek("40 baris indikator", len(c.get("/api/indikator", **kepala(t_op)).json()) == 40)
 cek("20 baris SPD", len(c.get("/api/spd", **kepala(t_vr)).json()) == 20)
@@ -68,23 +78,64 @@ print("\n== Mengisi indikator SPD ==")
 for ind in spd:
     c.put(f"/api/spd/{ind.id}", {"pilihan": 2, "keterangan": "dokumen terlampir"},
           content_type="application/json", **kepala(t_vr))
-total_spd = sum(float(x["skor"]) for x in c.get("/api/spd", **kepala(t_vr)).json())
-cek("skor SPD masih nol walau parameter terisi (belum ada berkas)", total_spd == 0.0, total_spd)
+# spd[0] dikecualikan dari penjumlahan ini -- baris itu sudah punya berkas
+# bukti dukung sungguhan sejak awal (lihat pembersihan di atas), jadi skornya
+# sudah lebih dari nol sebelum langkah unggah manapun di skrip ini.
+total_spd_tanpa_berkas = sum(float(x["skor"]) for x in c.get("/api/spd", **kepala(t_vr)).json()
+                             if x["indikator_id"] != spd[0].id)
+cek("skor SPD masih nol walau parameter terisi (belum ada berkas)",
+    total_spd_tanpa_berkas == 0.0, total_spd_tanpa_berkas)
 
 cek("operator tidak boleh unggah berkas SPD",
-    c.post(f"/api/spd/{spd[0].id}/berkas",
+    c.post(f"/api/spd/{spd[1].id}/berkas",
            {"berkas": SimpleUploadedFile("x.pdf", b"isi", content_type="application/pdf")},
            **kepala(t_op)).status_code == 403)
-r = c.post(f"/api/spd/{spd[0].id}/berkas",
+r = c.post(f"/api/spd/{spd[1].id}/berkas",
            {"berkas": SimpleUploadedFile("sk-spd.pdf", b"isi SK SPD uji", content_type="application/pdf")},
            **kepala(t_vr))
 cek("verifikator berhasil unggah berkas SPD", r.status_code == 200, r.content[:200])
 spd_setelah_satu_berkas = c.get("/api/spd", **kepala(t_vr)).json()
-baris_pertama = next(x for x in spd_setelah_satu_berkas if x["indikator_id"] == spd[0].id)
-cek("berkas_url SPD terisi setelah unggah", bool(baris_pertama["berkas_url"]), baris_pertama["berkas_url"])
+baris_pertama = next(x for x in spd_setelah_satu_berkas if x["indikator_id"] == spd[1].id)
+cek("berkas SPD terisi setelah unggah", len(baris_pertama["berkas"]) == 1, baris_pertama["berkas"])
 cek("skor baris itu langsung terhitung begitu berkas ada",
     float(baris_pertama["skor"]) == float(baris_pertama["bobot"]) * 2, baris_pertama["skor"])
 
+print("\n== Unggah berkas kedua tidak menimpa yang pertama ==")
+r2 = c.post(f"/api/spd/{spd[1].id}/berkas",
+            {"berkas": SimpleUploadedFile("sk-spd-kedua.pdf", b"berkas kedua uji", content_type="application/pdf")},
+            **kepala(t_vr))
+cek("berkas kedua berhasil diunggah", r2.status_code == 200, r2.content[:200])
+baris_dua_berkas = next(x for x in c.get("/api/spd", **kepala(t_vr)).json()
+                        if x["indikator_id"] == spd[1].id)
+cek("kedua berkas tersimpan sekaligus, bukan menimpa", len(baris_dua_berkas["berkas"]) == 2,
+    baris_dua_berkas["berkas"])
+nama_berkas = {b["nama_asli"] for b in baris_dua_berkas["berkas"]}
+cek("nama kedua berkas berbeda dan keduanya ada", nama_berkas == {"sk-spd.pdf", "sk-spd-kedua.pdf"},
+    nama_berkas)
+
+print("\n== Hapus salah satu berkas SPD ==")
+berkas_pertama_id = baris_dua_berkas["berkas"][0]["id"]
+cek("operator tidak boleh hapus berkas SPD",
+    c.delete(f"/api/spd/{spd[1].id}/berkas/{berkas_pertama_id}", **kepala(t_op)).status_code == 403)
+r3 = c.delete(f"/api/spd/{spd[1].id}/berkas/{berkas_pertama_id}", **kepala(t_vr))
+cek("verifikator berhasil hapus satu berkas", r3.status_code == 200, r3.content[:200])
+baris_setelah_hapus = next(x for x in c.get("/api/spd", **kepala(t_vr)).json()
+                           if x["indikator_id"] == spd[1].id)
+cek("tinggal satu berkas tersisa setelah hapus", len(baris_setelah_hapus["berkas"]) == 1,
+    baris_setelah_hapus["berkas"])
+cek("skor tetap terhitung selama masih ada berkas lain",
+    float(baris_setelah_hapus["skor"]) == float(baris_setelah_hapus["bobot"]) * 2,
+    baris_setelah_hapus["skor"])
+
+berkas_terakhir_id = baris_setelah_hapus["berkas"][0]["id"]
+c.delete(f"/api/spd/{spd[1].id}/berkas/{berkas_terakhir_id}", **kepala(t_vr))
+baris_tanpa_berkas = next(x for x in c.get("/api/spd", **kepala(t_vr)).json()
+                          if x["indikator_id"] == spd[1].id)
+cek("skor kembali nol setelah berkas terakhir dihapus", float(baris_tanpa_berkas["skor"]) == 0.0,
+    baris_tanpa_berkas["skor"])
+
+# spd[0] sengaja tidak disentuh skrip uji -- indikator itu memegang berkas
+# bukti dukung sungguhan yang sudah diunggah pengguna, bukan data uji.
 for ind in spd[1:]:
     c.post(f"/api/spd/{ind.id}/berkas",
            {"berkas": SimpleUploadedFile(f"sk-{ind.id}.pdf", b"isi SK SPD uji", content_type="application/pdf")},
@@ -147,6 +198,31 @@ cek("inovasi jadi layak", d["layak"] is True)
 video = next(x for x in d["bukti"] if x["nomor"] == 35)
 cek("indikator 35 Video berbobot 4", float(video["bobot"]) == 4.0, video["bobot"])
 cek("skor maksimum video 12", float(video["skor_maks"]) == 12.0)
+
+print("\n== Banyak berkas SID pada satu indikator, dan hapus berkas ==")
+r = c.post(f"/api/inovasi/{inv_id}/nilai/{sid[0].id}/berkas",
+           {"berkas": SimpleUploadedFile("sid-satu.pdf", b"berkas SID uji satu",
+                                         content_type="application/pdf")},
+           **kepala(t_op))
+cek("berkas SID pertama berhasil diunggah", r.status_code == 200, r.content[:200])
+r = c.post(f"/api/inovasi/{inv_id}/nilai/{sid[0].id}/berkas",
+           {"berkas": SimpleUploadedFile("sid-dua.pdf", b"berkas SID uji dua",
+                                         content_type="application/pdf")},
+           **kepala(t_op))
+cek("berkas SID kedua berhasil diunggah tanpa menimpa", r.status_code == 200, r.content[:200])
+bukti_sid0 = next(x for x in c.get(f"/api/inovasi/{inv_id}", **kepala(t_op)).json()["bukti"]
+                  if x["indikator_id"] == sid[0].id)
+cek("kedua berkas SID tersimpan sekaligus", len(bukti_sid0["berkas"]) == 2, bukti_sid0["berkas"])
+
+cek("OPD lain tidak boleh hapus berkas SID orang lain",
+    c.delete(f"/api/inovasi/{inv_id}/nilai/{sid[0].id}/berkas/{bukti_sid0['berkas'][0]['id']}",
+             **kepala(t_op2)).status_code in (403, 404))
+r = c.delete(f"/api/inovasi/{inv_id}/nilai/{sid[0].id}/berkas/{bukti_sid0['berkas'][0]['id']}",
+             **kepala(t_op))
+cek("pemilik berhasil hapus salah satu berkas SID", r.status_code == 200, r.content[:200])
+bukti_sid0_setelah = next(x for x in c.get(f"/api/inovasi/{inv_id}", **kepala(t_op)).json()["bukti"]
+                          if x["indikator_id"] == sid[0].id)
+cek("tinggal satu berkas SID tersisa", len(bukti_sid0_setelah["berkas"]) == 1, bukti_sid0_setelah["berkas"])
 
 print("\n== Isolasi antar OPD ==")
 cek("OPD lain tidak melihat", c.get(f"/api/inovasi/{inv_id}", **kepala(t_op2)).status_code == 404)
