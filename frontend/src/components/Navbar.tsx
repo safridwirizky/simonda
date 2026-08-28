@@ -26,9 +26,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           
           {/* Brand Logo & Title */}
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-            <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-emerald-500/20">
-              S
-            </div>
+            <img
+              src="/maskot.ico"
+              alt="Maskot SIMONDA"
+              className="w-10 h-10 rounded-lg object-cover shadow-lg shadow-emerald-500/20"
+            />
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-extrabold text-lg tracking-tight text-white">SIMONDA</span>

@@ -303,9 +303,11 @@ export default function App() {
   if (loading && !stats) {
     return (
       <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
-        <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-slate-950 font-black text-2xl animate-bounce mb-3 shadow-lg shadow-emerald-500/30">
-          S
-        </div>
+        <img
+          src="/maskot.ico"
+          alt="Maskot SIMONDA"
+          className="w-12 h-12 rounded-2xl object-cover animate-bounce mb-3 shadow-lg shadow-emerald-500/30"
+        />
         <h2 className="text-lg font-bold">Memuat System SIMONDA...</h2>
         <p className="text-xs text-slate-400 mt-1">Indeks Inovasi Daerah Kemendagri &bull; Kab. Rote Ndao</p>
       </div>
@@ -333,9 +335,11 @@ export default function App() {
 
         {!user ? (
           <div className="max-w-md mx-auto text-center py-20 space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500 flex items-center justify-center text-slate-950 font-black text-2xl mx-auto shadow-lg shadow-emerald-500/20">
-              S
-            </div>
+            <img
+              src="/maskot.ico"
+              alt="Maskot SIMONDA"
+              className="w-14 h-14 rounded-2xl object-cover mx-auto shadow-lg shadow-emerald-500/20"
+            />
             <h1 className="text-xl font-extrabold text-slate-900">Masuk untuk melihat data SIMONDA</h1>
             <p className="text-sm text-slate-500">
               Data inovasi daerah bersifat internal Pemkab Rote Ndao. Masuk dengan akun operator OPD
