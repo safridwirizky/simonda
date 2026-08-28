@@ -54,14 +54,16 @@ rata-rata kematangan ikut turun. Sistem menampilkan berapa "kursi kosong" tersis
 2025, atau ada pengembangan dalam rentang itu. Rancang bangun minimal 300 kata.
 Inovasi yang gagal syarat ini ditandai dan tidak ikut diekspor.
 
-**Indikator tanpa berkas tidak menyumbang skor.** Berlaku sama untuk SPD dan
-SID: memilih parameter 1–3 tidak langsung terhitung — skor baris itu tetap
-nol sampai berkas bukti dukungnya diunggah (Bapperida untuk SPD, OPD pelapor
-untuk SID). `NilaiSPD.skor` dan `NilaiSID.skor` sama-sama mengecek
-`daftar_berkas.exists()` sebelum menghitung `bobot x pilihan` — satu-satunya
-titik sumber kebenaran, dipakai baik untuk baris individual maupun agregat
-`skor_klaim`/`skor_terverifikasi`. Klaim tanpa dokumen tidak boleh
-memengaruhi proyeksi indeks.
+**Indikator tanpa bukti dukung tidak menyumbang skor.** Berlaku sama untuk
+SPD dan SID: memilih parameter 1–3 tidak langsung terhitung — skor baris itu
+tetap nol sampai ada bukti dukungnya (Bapperida untuk SPD, OPD pelapor untuk
+SID). Bukti dukung boleh berupa **berkas terunggah atau tautan** — dokumen di
+atas 10 MB tidak lolos batas unggah, jadi tautan (mis. Google Drive) dipakai
+sebagai gantinya dan tetap membuka skor. `NilaiSPD.skor` dan `NilaiSID.skor`
+sama-sama mengecek `daftar_berkas.exists() or tautan` sebelum menghitung
+`bobot x pilihan` — satu-satunya titik sumber kebenaran, dipakai baik untuk
+baris individual maupun agregat `skor_klaim`/`skor_terverifikasi`. Klaim
+tanpa bukti sama sekali tidak boleh memengaruhi proyeksi indeks.
 
 Setiap kali OPD mengubah bukti, status verifikasinya otomatis kembali ke
 "menunggu". Bukti lama tidak bisa diam-diam diganti setelah disetujui.
@@ -159,7 +161,7 @@ sebagai berkas statis di depan Gunicorn.
 cd backend
 export ALLOWED_HOSTS=localhost,127.0.0.1,testserver
 python uji_skor.py        # 32 pemeriksaan katalog dan rumus
-python uji_alur.py        # 81 pemeriksaan alur kerja
+python uji_alur.py        # 85 pemeriksaan alur kerja
 python uji_kontrak.py     # 42 pemeriksaan kontrak API terhadap antarmuka
 ```
 

@@ -83,6 +83,14 @@ total_spd_tanpa_berkas = sum(float(x["skor"]) for x in c.get("/api/spd", **kepal
 cek("skor SPD masih nol walau parameter terisi (belum ada berkas)",
     total_spd_tanpa_berkas == 0.0, total_spd_tanpa_berkas)
 
+print("\n== Tautan sebagai pengganti berkas (dokumen di atas 10MB) ==")
+r = c.put(f"/api/spd/{spd[2].id}", {"pilihan": 2, "tautan": "https://drive.google.com/uji-tautan-spd"},
+          content_type="application/json", **kepala(t_vr))
+baris_tautan_spd = next(x for x in c.get("/api/spd", **kepala(t_vr)).json() if x["indikator_id"] == spd[2].id)
+cek("skor SPD terhitung lewat tautan saja, tanpa berkas",
+    float(baris_tautan_spd["skor"]) == float(baris_tautan_spd["bobot"]) * 2, baris_tautan_spd["skor"])
+cek("murni tautan, tidak ada berkas tersimpan", len(baris_tautan_spd["berkas"]) == 0, baris_tautan_spd["berkas"])
+
 cek("operator tidak boleh unggah berkas SPD",
     c.post(f"/api/spd/{spd[1].id}/berkas",
            {"berkas": SimpleUploadedFile("x.pdf", b"isi", content_type="application/pdf")},
@@ -194,6 +202,19 @@ cek("skor SID masih nol walau parameter terisi (belum ada berkas)",
 cek("tidak ada indikator wajib kosong", d["wajib_belum_terisi"] == [])
 cek("inovasi jadi layak walau skor masih nol (layak = kelengkapan data, bukan berkas)",
     d["layak"] is True)
+
+print("\n== Tautan sebagai pengganti berkas (dokumen di atas 10MB) ==")
+sid_tautan = sid[1]
+# pilihan tetap 3 (sama seperti pengisian massal di atas) supaya total 111 di
+# bawah tidak berubah -- di sini yang diuji cuma bahwa tautan saja sudah
+# cukup untuk membuka skor, bukan mengganti nilai pilihannya.
+r = c.put(f"/api/inovasi/{inv_id}/nilai/{sid_tautan.id}",
+          {"pilihan": 3, "catatan": "SK terlampir", "tautan": "https://drive.google.com/uji-tautan-sid"},
+          content_type="application/json", **kepala(t_op))
+baris_tautan_sid = r.json()
+cek("skor SID terhitung lewat tautan saja, tanpa berkas",
+    float(baris_tautan_sid["skor"]) == float(baris_tautan_sid["bobot"]) * 3, baris_tautan_sid["skor"])
+cek("murni tautan, tidak ada berkas tersimpan", len(baris_tautan_sid["berkas"]) == 0, baris_tautan_sid["berkas"])
 
 for ind in sid:
     c.post(f"/api/inovasi/{inv_id}/nilai/{ind.id}/berkas",

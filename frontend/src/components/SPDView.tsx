@@ -106,7 +106,7 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
       <div className="space-y-3">
         {spdData.map((item) => {
           const isFilled = item.pilihan > 0;
-          const hasBerkas = item.berkas.length > 0;
+          const hasBukti = item.berkas.length > 0 || !!item.tautan;
           return (
             <div
               key={item.indikator_id}
@@ -131,10 +131,10 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
                 </div>
 
                 {isFilled ? (
-                  <p className={`text-xs font-medium ${hasBerkas ? 'text-emerald-700' : 'text-amber-600'}`}>
+                  <p className={`text-xs font-medium ${hasBukti ? 'text-emerald-700' : 'text-amber-600'}`}>
                     Parameter Terpilih ({item.pilihan}):{' '}
                     {item.pilihan === 1 ? item.parameter_1 : item.pilihan === 2 ? item.parameter_2 : item.parameter_3}
-                    {!hasBerkas && ' — skor belum terhitung, menunggu berkas'}
+                    {!hasBukti && ' — skor belum terhitung, menunggu berkas atau tautan'}
                   </p>
                 ) : (
                   <p className="text-xs text-rose-500 font-medium italic">Belum diisi parameter</p>
@@ -150,14 +150,20 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
                 </div>
 
                 {isFilled && (
-                  hasBerkas ? (
+                  hasBukti ? (
                     <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
                       <Check className="w-3.5 h-3.5" />
-                      <span>{item.berkas.length > 1 ? `Terisi (${item.berkas.length} berkas)` : 'Terisi'}</span>
+                      <span>
+                        {item.berkas.length > 1
+                          ? `Terisi (${item.berkas.length} berkas)`
+                          : item.berkas.length === 1
+                          ? 'Terisi'
+                          : 'Terisi (tautan)'}
+                      </span>
                     </span>
                   ) : (
                     <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
-                      <span>Menunggu Berkas</span>
+                      <span>Menunggu Bukti</span>
                     </span>
                   )
                 )}
@@ -211,7 +217,13 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
 
             <div className="space-y-3 pt-2 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Link Tautan / Dokumen Pendukung</label>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Link Tautan / Dokumen Pendukung
+                </label>
+                <p className="text-[11px] text-slate-500 mb-1">
+                  Berkas di atas 10MB tidak bisa diunggah langsung — isi tautan Google Drive
+                  atau sejenisnya di sini sebagai gantinya, skor tetap terhitung.
+                </p>
                 <input
                   type="url"
                   placeholder="https://..."
@@ -273,9 +285,9 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
                 <label className="block font-semibold text-slate-700 mb-1">
                   Tambah Berkas Baru (boleh lebih dari satu, maks 10MB per berkas)
                 </label>
-                {editPilihan > 0 && selectedSpd.berkas.length === 0 && uploadingFiles.length === 0 && (
+                {editPilihan > 0 && selectedSpd.berkas.length === 0 && uploadingFiles.length === 0 && !editTautan && (
                   <p className="text-[11px] text-amber-600 font-semibold mb-1">
-                    Skor baris ini tetap 0 sampai berkas diunggah — parameter saja tidak cukup.
+                    Skor baris ini tetap 0 sampai ada berkas atau tautan — parameter saja tidak cukup.
                   </p>
                 )}
                 <input
