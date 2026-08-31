@@ -32,8 +32,8 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin }) => {
 
         <div className="flex items-center justify-between border-b pb-3">
           <div className="flex items-center space-x-2">
-            <img src="/maskot.ico" alt="Maskot SIMONDA" className="w-6 h-6 rounded object-cover" />
-            <h2 className="text-base font-extrabold text-slate-900">Masuk Akun SIMONDA</h2>
+            <img src="/maskot.ico" alt="Maskot SANDO" className="w-6 h-6 rounded object-cover" />
+            <h2 className="text-base font-extrabold text-slate-900">Masuk Akun SANDO</h2>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />

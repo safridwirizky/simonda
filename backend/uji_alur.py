@@ -1,4 +1,4 @@
-"""Uji alur SIMONDA lewat API, memakai aturan penilaian IGA 2026.
+"""Uji alur SANDO lewat API, memakai aturan penilaian IGA 2026.
 
     DEBUG=1 SECRET_KEY=... ALLOWED_HOSTS=localhost,testserver python uji_alur.py
 """

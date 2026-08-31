@@ -17,10 +17,10 @@ class UserAdmin(BaseUserAdmin):
     list_display = ("username", "get_full_name", "peran", "opd", "is_active")
     list_filter = ("peran", "opd", "is_active")
     fieldsets = BaseUserAdmin.fieldsets + (
-        ("Data SIMONDA", {"fields": ("peran", "opd", "nip", "telepon")}),
+        ("Data SANDO", {"fields": ("peran", "opd", "nip", "telepon")}),
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
-        ("Data SIMONDA", {"fields": ("peran", "opd", "nip", "telepon")}),
+        ("Data SANDO", {"fields": ("peran", "opd", "nip", "telepon")}),
     )
 
 

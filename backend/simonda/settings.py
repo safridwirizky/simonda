@@ -81,7 +81,7 @@ elif os.getenv("DB_NAME"):
         "PORT": os.getenv("DB_PORT", "5432"),
     }}
 else:
-    # Basis data utama SIMONDA (dev maupun produksi/PythonAnywhere). Berkas
+    # Basis data utama SANDO (dev maupun produksi/PythonAnywhere). Berkas
     # tunggal di disk -- pastikan db.sqlite3 masuk jadwal backup manual,
     # tidak ada replikasi/point-in-time-recovery otomatis seperti basis data
     # terkelola (lihat README bagian "Deploy gratis").

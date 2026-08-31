@@ -305,10 +305,10 @@ export default function App() {
       <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
         <img
           src="/maskot.ico"
-          alt="Maskot SIMONDA"
+          alt="Maskot SANDO"
           className="w-12 h-12 rounded-2xl object-cover animate-bounce mb-3 shadow-lg shadow-emerald-500/30"
         />
-        <h2 className="text-lg font-bold">Memuat System SIMONDA...</h2>
+        <h2 className="text-lg font-bold">Memuat System SANDO...</h2>
         <p className="text-xs text-slate-400 mt-1">Indeks Inovasi Daerah Kemendagri &bull; Kab. Rote Ndao</p>
       </div>
     );
@@ -337,10 +337,10 @@ export default function App() {
           <div className="max-w-md mx-auto text-center py-20 space-y-4">
             <img
               src="/maskot.ico"
-              alt="Maskot SIMONDA"
+              alt="Maskot SANDO"
               className="w-14 h-14 rounded-2xl object-cover mx-auto shadow-lg shadow-emerald-500/20"
             />
-            <h1 className="text-xl font-extrabold text-slate-900">Masuk untuk melihat data SIMONDA</h1>
+            <h1 className="text-xl font-extrabold text-slate-900">Masuk untuk melihat data SANDO</h1>
             <p className="text-sm text-slate-500">
               Data inovasi daerah bersifat internal Pemkab Rote Ndao. Masuk dengan akun operator OPD
               atau verifikator Bapperida untuk melanjutkan.
@@ -424,8 +424,8 @@ export default function App() {
       <footer className="bg-slate-900 text-slate-400 text-xs py-6 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
-            <span className="font-bold text-white">SIMONDA Rote Ndao</span>
-            <span>&bull; Sistem Monitoring Inovasi Daerah</span>
+            <span className="font-bold text-white">SANDO Rote Ndao</span>
+            <span>&bull; Sistem Analisis dan Monitoring Data Inovasi</span>
           </div>
           <div>&copy; {new Date().getFullYear()} Bapperida Kabupaten Rote Ndao &bull; IGA Kemendagri</div>
         </div>

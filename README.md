@@ -1,6 +1,6 @@
-# SIMONDA Rote Ndao
+# SANDO Rote Ndao
 
-Sistem Monitoring Inovasi Daerah Kabupaten Rote Ndao. Dipakai sepanjang tahun untuk
+Sistem Analisis dan Monitoring Data Inovasi Kabupaten Rote Ndao. Dipakai sepanjang tahun untuk
 mengumpulkan inovasi dan mencicil bukti dukungnya, supaya saat window pelaporan
 Innovative Government Award (IGA) dibuka, datanya tinggal disalin.
 
@@ -196,7 +196,7 @@ menghapus seluruh inovasi saat mulai.
 kode OPD huruf kecil, sandi awal `admin123` untuk semua — **wajib diganti**
 sebelum dipakai sungguhan).
 
-Akun operator baru berikutnya dibuat verifikator sendiri dari dalam SIMONDA,
+Akun operator baru berikutnya dibuat verifikator sendiri dari dalam SANDO,
 lewat menu **Kelola Akun** (bisa buat, lihat daftar, nonaktifkan/aktifkan, dan
 reset sandi — tanpa perlu Django Admin). Akun `verifikator`/`admin` baru tetap
 lewat `/admin/` → Users → Add, karena itu batas kepercayaan yang lebih tinggi

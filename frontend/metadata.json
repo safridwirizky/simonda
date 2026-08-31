@@ -1,6 +1,6 @@
 {
-  "name": "SIMONDA Rote Ndao",
-  "description": "Sistem Monitoring Inovasi Daerah Kabupaten Rote Ndao",
+  "name": "SANDO Rote Ndao",
+  "description": "Sistem Analisis dan Monitoring Data Inovasi Kabupaten Rote Ndao",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

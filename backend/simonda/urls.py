@@ -5,8 +5,8 @@ from django.urls import path
 
 from inovasi.api import api
 
-admin.site.site_header = "SIMONDA Rote Ndao"
-admin.site.site_title = "SIMONDA"
+admin.site.site_header = "SANDO Rote Ndao"
+admin.site.site_title = "SANDO"
 admin.site.index_title = "Pengelolaan data inovasi daerah"
 
 urlpatterns = [

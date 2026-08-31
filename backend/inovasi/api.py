@@ -51,7 +51,7 @@ class AuthBearer(HttpBearer):
         return user
 
 
-api = NinjaAPI(title="SIMONDA Rote Ndao", version="1.0", auth=AuthBearer(), urls_namespace="simonda")
+api = NinjaAPI(title="SANDO Rote Ndao", version="1.0", auth=AuthBearer(), urls_namespace="simonda")
 
 
 def wajib_verifikator(request):
@@ -130,7 +130,7 @@ def daftar_indikator(request, periode_id: Optional[int] = None):
 
 # ------------------------------ akun OPD ------------------------------
 # Verifikator/admin ("akun daerah") membuat dan mengelola akun operator OPD
-# ("akun perangkat daerah") langsung dari SIMONDA. Akun verifikator/admin
+# ("akun perangkat daerah") langsung dari SANDO. Akun verifikator/admin
 # sendiri tetap dibuat lewat Django Admin — batas kepercayaan lebih tinggi.
 
 def akun_ringkas(u: User) -> dict:

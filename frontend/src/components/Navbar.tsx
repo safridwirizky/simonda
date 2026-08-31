@@ -28,12 +28,12 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
             <img
               src="/maskot.ico"
-              alt="Maskot SIMONDA"
+              alt="Maskot SANDO"
               className="w-10 h-10 rounded-lg object-cover shadow-lg shadow-emerald-500/20"
             />
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-lg tracking-tight text-white">SIMONDA</span>
+                <span className="font-extrabold text-lg tracking-tight text-white">SANDO</span>
                 {tahun && (
                   <span className="text-xs bg-emerald-500/20 text-emerald-400 font-semibold px-2 py-0.5 rounded border border-emerald-500/30">
                     IGA {tahun}
