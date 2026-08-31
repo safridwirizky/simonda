@@ -88,6 +88,37 @@ export const PARAMETER_KEMANFAATAN: Record<string, [string, string, string]> = {
   ],
 };
 
+// Klasifikasi kematangan per inovasi berdasarkan skor_klaim (0-111) -- bukan
+// bagian pedoman resmi BSKDN, konvensi internal untuk memantau kesiapan tiap
+// inovasi. Ambang batasnya harus sama persis dengan iga.KLASIFIKASI_KEMATANGAN
+// di backend.
+export const KLASIFIKASI_KEMATANGAN: Record<
+  'danger' | 'warning' | 'hijau',
+  { label: string; deskripsi: string; badge: string; dot: string; solid: string }
+> = {
+  danger: {
+    label: 'Skor Rendah',
+    deskripsi: 'Skor 0 - 65',
+    badge: 'bg-rose-100 text-rose-800 border-rose-200',
+    dot: 'bg-rose-500',
+    solid: 'bg-rose-500 text-white',
+  },
+  warning: {
+    label: 'Skor Sedang',
+    deskripsi: 'Skor 66 - 84',
+    badge: 'bg-amber-100 text-amber-800 border-amber-200',
+    dot: 'bg-amber-500',
+    solid: 'bg-amber-500 text-white',
+  },
+  hijau: {
+    label: 'Skor Tinggi',
+    deskripsi: 'Skor 85 - 111',
+    badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    dot: 'bg-emerald-500',
+    solid: 'bg-emerald-500 text-white',
+  },
+};
+
 // Kosong berarti origin yang sama (proxy Vite dev, atau Nginx di produksi).
 const API_BASE = import.meta.env.VITE_API_URL || '';
 

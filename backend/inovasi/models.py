@@ -265,6 +265,12 @@ class Inovasi(models.Model):
         return self._skor(True)
 
     @property
+    def klasifikasi_kematangan(self) -> str:
+        """Klasifikasi kesiapan inovasi (danger/warning/hijau) dari skor_klaim
+        -- lihat iga.klasifikasi_kematangan untuk ambang batasnya."""
+        return iga.klasifikasi_kematangan(self.skor_klaim)
+
+    @property
     def persen_klaim(self) -> int:
         return round(self.skor_klaim / iga.MAKS_SID_INDIKATOR * 100)
 

@@ -116,11 +116,16 @@ print("\n== DaftarInovasi.jsx ==")
 daftar = c.get("/api/inovasi", **kepala(t_op)).json()
 punya("baris daftar", daftar[0],
       ["id", "nama", "opd", "tahapan", "jenis", "bentuk", "urusan", "status",
-       "skor_klaim", "skor_terverifikasi", "persen_terverifikasi", "layak",
-       "diperbarui_pada"])
+       "skor_klaim", "skor_terverifikasi", "persen_terverifikasi",
+       "klasifikasi_kematangan", "layak", "diperbarui_pada"])
 punya("baris.opd", daftar[0]["opd"], ["id", "kode", "nama"])
+cek("klasifikasi_kematangan salah satu dari tiga",
+    daftar[0]["klasifikasi_kematangan"] in ("danger", "warning", "hijau"),
+    daftar[0]["klasifikasi_kematangan"])
 cek("saringan status bekerja",
     c.get("/api/inovasi", {"status": "draft"}, **kepala(t_op)).status_code == 200)
+cek("saringan klasifikasi bekerja",
+    c.get("/api/inovasi", {"klasifikasi": "danger"}, **kepala(t_op)).status_code == 200)
 cek("pencarian bekerja",
     len(c.get("/api/inovasi", {"q": "SIPADU"}, **kepala(t_op)).json()) == 1)
 cek("daftar OPD tersedia untuk verifikator",
@@ -129,7 +134,8 @@ cek("daftar OPD tersedia untuk verifikator",
 print("\n== DetailInovasi.jsx ==")
 d = c.get(f"/api/inovasi/{inv_id}", **kepala(t_op)).json()
 punya("detail", d,
-      ["id", "nama", "opd", "status", "skor_klaim", "skor_terverifikasi", "layak",
+      ["id", "nama", "opd", "status", "skor_klaim", "skor_terverifikasi",
+       "klasifikasi_kematangan", "layak",
        "bisa_diubah", "masalah_kelayakan", "wajib_belum_terisi", "catatan_verifikasi",
        "bukti", "nama_inisiator", "klasifikasi", "asta_cita", "pkpn_klaster",
        "pkpn_program", "pengembangan_terbaru", "mulai_uji_coba", "mulai_penerapan",

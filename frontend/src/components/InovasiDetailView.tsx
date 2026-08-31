@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { InovasiDetail, NilaiBukti, UserProfile } from '../types';
-import { BASIS_KEMANFAATAN, PARAMETER_KEMANFAATAN } from '../api';
+import { BASIS_KEMANFAATAN, PARAMETER_KEMANFAATAN, KLASIFIKASI_KEMATANGAN } from '../api';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -215,6 +215,15 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
                 Belum Memenuhi Syarat
               </span>
             )}
+
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                KLASIFIKASI_KEMATANGAN[inovasi.klasifikasi_kematangan].badge
+              }`}
+              title={KLASIFIKASI_KEMATANGAN[inovasi.klasifikasi_kematangan].deskripsi}
+            >
+              {KLASIFIKASI_KEMATANGAN[inovasi.klasifikasi_kematangan].label}
+            </span>
           </div>
         </div>
 

@@ -1,12 +1,12 @@
 import React from 'react';
 import { UserProfile } from '../types';
-import { LayoutDashboard, Lightbulb, FileSpreadsheet, BarChart3, LogIn, LogOut, ShieldCheck, User, UserCog } from 'lucide-react';
+import { LayoutDashboard, Lightbulb, FileSpreadsheet, BarChart3, LogIn, LogOut, ShieldCheck, User, UserCog, Gauge } from 'lucide-react';
 
 interface NavbarProps {
   user: UserProfile | null;
   tahun: number | null;
-  activeTab: 'dashboard' | 'inovasi' | 'spd' | 'rekap' | 'akun';
-  setActiveTab: (tab: 'dashboard' | 'inovasi' | 'spd' | 'rekap' | 'akun') => void;
+  activeTab: 'dashboard' | 'inovasi' | 'spd' | 'rekap' | 'akun' | 'monitoring';
+  setActiveTab: (tab: 'dashboard' | 'inovasi' | 'spd' | 'rekap' | 'akun' | 'monitoring') => void;
   onOpenLogin: () => void;
   onLogout: () => void;
 }
@@ -100,6 +100,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <BarChart3 className="w-4 h-4" />
                   <span>Rekap OPD</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('monitoring')}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    activeTab === 'monitoring'
+                      ? 'bg-emerald-500 text-slate-950 shadow-sm'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                  }`}
+                >
+                  <Gauge className="w-4 h-4" />
+                  <span>Monitoring</span>
                 </button>
 
                 <button
@@ -197,6 +209,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <BarChart3 className="w-4 h-4 mb-0.5" />
                 <span>Rekap</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('monitoring')}
+                className={`flex flex-col items-center py-1 px-2 ${
+                  activeTab === 'monitoring' ? 'text-emerald-400 font-bold' : 'text-slate-400'
+                }`}
+              >
+                <Gauge className="w-4 h-4 mb-0.5" />
+                <span>Monitor</span>
               </button>
               <button
                 onClick={() => setActiveTab('akun')}

@@ -97,6 +97,7 @@ export interface InovasiRingkas {
   skor_klaim: number;
   skor_terverifikasi: number;
   persen_terverifikasi: number;
+  klasifikasi_kematangan: 'danger' | 'warning' | 'hijau';
   layak: boolean;
   diperbarui_pada: string;
 }

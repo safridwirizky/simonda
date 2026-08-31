@@ -257,7 +257,8 @@ def ringkas(i: Inovasi) -> dict:
            ("id", "nama", "tahapan", "jenis", "bentuk", "urusan", "status", "diperbarui_pada")},
         "opd": {"id": i.opd.id, "kode": i.opd.kode, "nama": i.opd.nama},
         "skor_klaim": i.skor_klaim, "skor_terverifikasi": i.skor_terverifikasi,
-        "persen_terverifikasi": i.persen_terverifikasi, "layak": i.layak,
+        "persen_terverifikasi": i.persen_terverifikasi,
+        "klasifikasi_kematangan": i.klasifikasi_kematangan, "layak": i.layak,
     }
 
 
@@ -281,6 +282,7 @@ def daftar_inovasi(
     status: Optional[str] = None,
     tahapan: Optional[str] = None,
     periode_id: Optional[int] = None,
+    klasifikasi: Optional[str] = None,
 ):
     qs = inovasi_terlihat(request.user).filter(periode_id=periode_id or periode_aktif().id)
     if q:
@@ -291,7 +293,10 @@ def daftar_inovasi(
         qs = qs.filter(status=status)
     if tahapan:
         qs = qs.filter(tahapan=tahapan)
-    return [ringkas(i) for i in qs]
+    hasil = [ringkas(i) for i in qs]
+    if klasifikasi:
+        hasil = [r for r in hasil if r["klasifikasi_kematangan"] == klasifikasi]
+    return hasil
 
 
 @api.post("/inovasi", response={201: InovasiDetail})

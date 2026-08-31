@@ -192,6 +192,7 @@ class InovasiRingkas(Schema):
     skor_klaim: float
     skor_terverifikasi: float
     persen_terverifikasi: int
+    klasifikasi_kematangan: str
     layak: bool
     diperbarui_pada: datetime
 

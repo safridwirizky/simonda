@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { InovasiRingkas, OPD, UserProfile } from '../types';
+import { KLASIFIKASI_KEMATANGAN } from '../api';
 import { Search, Plus, Filter, AlertCircle, CheckCircle, Clock, Building2, ChevronRight, ShieldAlert } from 'lucide-react';
 
 interface InovasiListViewProps {
@@ -191,6 +192,13 @@ export const InovasiListView: React.FC<InovasiListViewProps> = ({
                   </span>
                   <span className="bg-blue-50 text-blue-800 px-2 py-0.5 rounded font-medium capitalize">
                     {item.jenis.replace('_', ' ')}
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded font-bold border ${
+                      KLASIFIKASI_KEMATANGAN[item.klasifikasi_kematangan].badge
+                    }`}
+                  >
+                    {KLASIFIKASI_KEMATANGAN[item.klasifikasi_kematangan].label}
                   </span>
                 </div>
               </div>

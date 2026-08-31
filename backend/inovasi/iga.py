@@ -259,3 +259,24 @@ def potensi_tambahan(skor_spd, skor_sid_tiap_inovasi: list, urusan_yandas_terpen
     sesudah = hitung_indeks(skor_spd, list(skor_sid_tiap_inovasi) + [skor_inovasi_baru],
                             urusan_yandas_terpenuhi)
     return sesudah["indeks"] - sebelum["indeks"]
+
+
+# ------------------- klasifikasi kematangan per inovasi -------------------
+# Bukan bagian dari pedoman resmi BSKDN -- konvensi internal untuk memantau
+# kesiapan tiap inovasi berdasarkan skor SID-nya sendiri (skala 0-111),
+# terpisah dari kategori Indeks Inovasi Daerah 0-100 di atas.
+
+KLASIFIKASI_KEMATANGAN = [
+    ("danger", "Skor Rendah", 0, 65),
+    ("warning", "Skor Sedang", 66, 84),
+    ("hijau", "Skor Tinggi", 85, 111),
+]
+
+
+def klasifikasi_kematangan(skor_sid) -> str:
+    """Kode klasifikasi ('danger'/'warning'/'hijau') dari skor SID satu inovasi (0-111)."""
+    nilai = Decimal(str(skor_sid))
+    for kode, _label, _bawah, atas in KLASIFIKASI_KEMATANGAN:
+        if nilai <= atas:
+            return kode
+    return "hijau"

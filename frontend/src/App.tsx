@@ -46,12 +46,13 @@ import { InovasiDetailView } from './components/InovasiDetailView';
 import { SPDView } from './components/SPDView';
 import { RekapOPDView } from './components/RekapOPDView';
 import { KelolaAkunView } from './components/KelolaAkunView';
+import { MonitoringView } from './components/MonitoringView';
 import { InovasiFormModal } from './components/InovasiFormModal';
 import { LoginModal } from './components/LoginModal';
 
 export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'inovasi' | 'spd' | 'rekap' | 'akun'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'inovasi' | 'spd' | 'rekap' | 'akun' | 'monitoring'>('dashboard');
 
   // Main state collections
   const [stats, setStats] = useState<RingkasanStatistik | null>(null);
@@ -402,6 +403,15 @@ export default function App() {
           <RekapOPDView
             rekapList={rekapList}
             inovasiList={inovasiList}
+            onSelectInovasi={(id) => {
+              setSelectedInovasiId(id);
+              setActiveTab('inovasi');
+            }}
+          />
+        ) : activeTab === 'monitoring' ? (
+          <MonitoringView
+            inovasiList={inovasiList}
+            opdList={opdList}
             onSelectInovasi={(id) => {
               setSelectedInovasiId(id);
               setActiveTab('inovasi');
