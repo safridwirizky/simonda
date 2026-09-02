@@ -39,7 +39,8 @@ class PeriodeAdmin(admin.ModelAdmin):
 class NilaiSIDInline(admin.TabularInline):
     model = NilaiSID
     extra = 0
-    fields = ("indikator", "pilihan", "verifikasi", "tautan", "catatan_verifikator")
+    fields = ("indikator", "pilihan", "verifikasi", "tautan",
+              "nomor_dokumen", "tanggal_dokumen", "catatan_verifikator")
 
 
 @admin.register(NilaiSPD)

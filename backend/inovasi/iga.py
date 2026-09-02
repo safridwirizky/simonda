@@ -123,6 +123,11 @@ SID = [
       "Memenuhi 5 unsur substansi")),
 ]
 
+# Indikator SID yang bukti dukungnya lazim berupa surat/dokumen resmi (SK,
+# surat penugasan, undangan bimtek, dsb) -- untuk baris-baris ini formulir
+# menampilkan kolom nomor dan tanggal surat/dokumen tambahan.
+INDIKATOR_PERLU_DOKUMEN = [16, 17, 18, 20, 21, 22, 23, 24, 28, 31]
+
 # Basis ukur alternatif indikator 33 (Kemanfaatan Inovasi), Lampiran II butir 33
 # a-f. OPD memilih tepat satu basis -- tiap basis punya ambang parameter 1-3
 # sendiri, tidak bisa dicampur.

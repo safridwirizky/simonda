@@ -79,6 +79,8 @@ export interface NilaiBukti {
   skor_maks: number;
   catatan?: string;
   tautan?: string;
+  nomor_dokumen?: string;
+  tanggal_dokumen?: string | null;
   berkas: BerkasFile[];
   verifikasi: 'menunggu' | 'diterima' | 'ditolak';
   catatan_verifikator?: string;

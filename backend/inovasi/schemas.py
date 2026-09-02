@@ -107,6 +107,8 @@ class BuktiOut(Schema):
     skor_maks: float
     catatan: str = ""
     tautan: str = ""
+    nomor_dokumen: str = ""
+    tanggal_dokumen: Optional[date] = None
     berkas: List[BerkasOut] = []
     verifikasi: str
     catatan_verifikator: str = ""
@@ -118,6 +120,8 @@ class BuktiIn(Schema):
     basis_ukur: str = ""
     catatan: str = ""
     tautan: str = ""
+    nomor_dokumen: str = ""
+    tanggal_dokumen: Optional[date] = None
 
 
 class NilaiSPDIn(Schema):

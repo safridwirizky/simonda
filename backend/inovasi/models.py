@@ -335,6 +335,12 @@ class NilaiSID(models.Model):
                                   help_text="Untuk indikator 33, basis a sampai f")
     catatan = models.TextField(blank=True)
     tautan = models.URLField(blank=True, max_length=500)
+    nomor_dokumen = models.CharField(
+        max_length=150, blank=True,
+        help_text="Nomor surat/dokumen bukti dukung. Dipakai indikator 16, 17, 18, 20, "
+                  "21, 22, 23, 24, 28, 31 (SK, surat penugasan, undangan, dsb).")
+    tanggal_dokumen = models.DateField(
+        null=True, blank=True, help_text="Tanggal surat/dokumen bukti dukung.")
 
     verifikasi = models.CharField(max_length=15, choices=VERIFIKASI, default=MENUNGGU)
     catatan_verifikator = models.TextField(blank=True)

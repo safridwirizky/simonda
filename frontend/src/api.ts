@@ -92,6 +92,12 @@ export const PARAMETER_KEMANFAATAN: Record<string, [string, string, string]> = {
 // bagian pedoman resmi BSKDN, konvensi internal untuk memantau kesiapan tiap
 // inovasi. Ambang batasnya harus sama persis dengan iga.KLASIFIKASI_KEMATANGAN
 // di backend.
+// Indikator SID yang bukti dukungnya lazim berupa surat/dokumen resmi (SK,
+// surat penugasan, undangan bimtek, dsb) -- untuk baris ini modal menampilkan
+// kolom nomor dan tanggal surat/dokumen tambahan. Harus sama persis dengan
+// iga.INDIKATOR_PERLU_DOKUMEN di backend.
+export const INDIKATOR_PERLU_DOKUMEN = [16, 17, 18, 20, 21, 22, 23, 24, 28, 31];
+
 export const KLASIFIKASI_KEMATANGAN: Record<
   'danger' | 'warning' | 'hijau',
   { label: string; deskripsi: string; badge: string; dot: string; solid: string }
@@ -263,7 +269,14 @@ export async function verifyInovasi(id: number, keputusan: 'terima' | 'revisi', 
 export async function updateNilaiBukti(
   inovasiId: number,
   indikatorId: number,
-  data: { pilihan: number; basis_ukur?: string; catatan?: string; tautan?: string }
+  data: {
+    pilihan: number;
+    basis_ukur?: string;
+    catatan?: string;
+    tautan?: string;
+    nomor_dokumen?: string;
+    tanggal_dokumen?: string | null;
+  }
 ): Promise<void> {
   const res = await fetch(`${API_BASE}/api/inovasi/${inovasiId}/nilai/${indikatorId}`, {
     method: 'PUT',

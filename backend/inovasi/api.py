@@ -238,6 +238,8 @@ def baris_nilai(ind: Indikator, n) -> dict:
         "skor_maks": ind.skor_maks,
         "catatan": n.catatan if n else "",
         "tautan": n.tautan if n else "",
+        "nomor_dokumen": n.nomor_dokumen if n else "",
+        "tanggal_dokumen": n.tanggal_dokumen if n else None,
         "berkas": daftar_berkas(n),
         "verifikasi": n.verifikasi_efektif if n else NilaiSID.MENUNGGU,
         "catatan_verifikator": (
@@ -399,6 +401,7 @@ def ubah_nilai(request, inovasi_id: int, indikator_id: int, data: BuktiIn):
     n, _ = NilaiSID.objects.get_or_create(inovasi=inv, indikator=ind)
     n.pilihan, n.catatan, n.tautan = data.pilihan, data.catatan, data.tautan
     n.basis_ukur = data.basis_ukur
+    n.nomor_dokumen, n.tanggal_dokumen = data.nomor_dokumen, data.tanggal_dokumen
     n.diperbarui_oleh = request.user
     n.save()
     return baris_nilai(ind, n)

@@ -210,7 +210,14 @@ export default function App() {
 
   const handleUpdateNilai = async (
     indikatorId: number,
-    data: { pilihan: number; basis_ukur?: string; catatan?: string; tautan?: string }
+    data: {
+      pilihan: number;
+      basis_ukur?: string;
+      catatan?: string;
+      tautan?: string;
+      nomor_dokumen?: string;
+      tanggal_dokumen?: string | null;
+    }
   ) => {
     if (!selectedInovasiDetail) return;
     await updateNilaiBukti(selectedInovasiDetail.id, indikatorId, data);

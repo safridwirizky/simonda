@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { InovasiDetail, NilaiBukti, UserProfile } from '../types';
-import { BASIS_KEMANFAATAN, PARAMETER_KEMANFAATAN, KLASIFIKASI_KEMATANGAN } from '../api';
+import { BASIS_KEMANFAATAN, PARAMETER_KEMANFAATAN, KLASIFIKASI_KEMATANGAN, INDIKATOR_PERLU_DOKUMEN } from '../api';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -30,7 +30,14 @@ interface InovasiDetailViewProps {
   onVerifyInovasi: (keputusan: 'terima' | 'revisi', catatan: string) => void;
   onUpdateNilai: (
     indikatorId: number,
-    data: { pilihan: number; basis_ukur?: string; catatan?: string; tautan?: string }
+    data: {
+      pilihan: number;
+      basis_ukur?: string;
+      catatan?: string;
+      tautan?: string;
+      nomor_dokumen?: string;
+      tanggal_dokumen?: string | null;
+    }
   ) => Promise<void>;
   onUploadBerkas: (indikatorId: number, file: File) => Promise<void>;
   onDeleteBerkas: (indikatorId: number, berkasId: number) => Promise<void>;
@@ -62,6 +69,8 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
   const [editBasisUkur, setEditBasisUkur] = useState<string>('');
   const [editCatatan, setEditCatatan] = useState<string>('');
   const [editTautan, setEditTautan] = useState<string>('');
+  const [editNomorDokumen, setEditNomorDokumen] = useState<string>('');
+  const [editTanggalDokumen, setEditTanggalDokumen] = useState<string>('');
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
   const [verifDecision, setVerifDecision] = useState<'diterima' | 'ditolak'>('diterima');
   const [verifIndikatorCatatan, setVerifIndikatorCatatan] = useState<string>('');
@@ -90,6 +99,8 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
     setEditBasisUkur(b.basis_ukur || '');
     setEditCatatan(b.catatan || '');
     setEditTautan(b.tautan || '');
+    setEditNomorDokumen(b.nomor_dokumen || '');
+    setEditTanggalDokumen(b.tanggal_dokumen || '');
     setUploadingFiles([]);
     setVerifDecision(b.verifikasi === 'ditolak' ? 'ditolak' : 'diterima');
     setVerifIndikatorCatatan(b.catatan_verifikator || '');
@@ -104,6 +115,8 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
         basis_ukur: editBasisUkur,
         catatan: editCatatan,
         tautan: editTautan,
+        nomor_dokumen: editNomorDokumen,
+        tanggal_dokumen: editTanggalDokumen || null,
       });
 
       for (const file of uploadingFiles) {
@@ -551,6 +564,34 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
                   className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
+
+              {INDIKATOR_PERLU_DOKUMEN.includes(selectedIndikator.nomor) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Nomor Surat/Dokumen
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: 400.10.11/123/BAPPERIDA/2025"
+                      value={editNomorDokumen}
+                      onChange={(e) => setEditNomorDokumen(e.target.value)}
+                      className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Tanggal Surat/Dokumen
+                    </label>
+                    <input
+                      type="date"
+                      value={editTanggalDokumen}
+                      onChange={(e) => setEditTanggalDokumen(e.target.value)}
+                      className="w-full text-xs p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
