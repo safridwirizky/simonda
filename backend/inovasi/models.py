@@ -249,7 +249,7 @@ class Inovasi(models.Model):
             n = nilai.get(ind.id)
             if not n or not n.pilihan:
                 continue
-            if hanya_terverifikasi and n.verifikasi != NilaiSID.DITERIMA:
+            if hanya_terverifikasi and n.verifikasi_efektif != NilaiSID.DITERIMA:
                 continue
             total += n.skor
         return total
@@ -340,6 +340,13 @@ class NilaiSID(models.Model):
     catatan_verifikator = models.TextField(blank=True)
     diverifikasi_oleh = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
                                           on_delete=models.SET_NULL, related_name="+")
+    # Cuplikan bukti pada saat verifikasi diputuskan -- dipakai verifikasi_efektif
+    # untuk mengetahui persis berkas/tautan/pilihan mana yang sudah benar-benar
+    # diperiksa. Begitu salah satu berubah, keputusan lama otomatis tidak
+    # berlaku lagi tanpa endpoint mana pun perlu memanggil reset manual.
+    verifikasi_bukti_berkas = models.JSONField(default=list, blank=True)
+    verifikasi_bukti_tautan = models.CharField(max_length=500, blank=True)
+    verifikasi_bukti_pilihan = models.PositiveSmallIntegerField(default=0)
     diperbarui_oleh = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
                                         on_delete=models.SET_NULL, related_name="+")
     diperbarui_pada = models.DateTimeField(auto_now=True)
@@ -359,11 +366,23 @@ class NilaiSID(models.Model):
             return Decimal("0")
         return iga.skor_baris(self.indikator.bobot, self.pilihan)
 
-    def tandai_ulang(self):
-        """Nilai yang diubah OPD wajib diverifikasi ulang."""
-        self.verifikasi = self.MENUNGGU
-        self.catatan_verifikator = ""
-        self.diverifikasi_oleh = None
+    @property
+    def verifikasi_efektif(self) -> str:
+        """Status Diterima/Ditolak cuma berlaku selama bukti yang diperiksa
+        verifikator (set berkas, tautan, dan pilihan persis saat itu) belum
+        berubah. Begitu OPD atau verifikator sendiri menambah/menghapus
+        berkas, mengedit tautan, atau mengganti pilihan -- baris ini otomatis
+        kembali "menunggu", karena keputusan lama tidak lagi mengikat bukti
+        yang sekarang ada."""
+        if self.verifikasi == self.MENUNGGU:
+            return self.MENUNGGU
+        berkas_sekarang = sorted(b.id for b in self.daftar_berkas.all())
+        cocok = (
+            berkas_sekarang == sorted(self.verifikasi_bukti_berkas)
+            and self.tautan == self.verifikasi_bukti_tautan
+            and self.pilihan == self.verifikasi_bukti_pilihan
+        )
+        return self.verifikasi if cocok else self.MENUNGGU
 
 
 class BerkasSID(models.Model):

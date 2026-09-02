@@ -239,8 +239,10 @@ def baris_nilai(ind: Indikator, n) -> dict:
         "catatan": n.catatan if n else "",
         "tautan": n.tautan if n else "",
         "berkas": daftar_berkas(n),
-        "verifikasi": n.verifikasi if n else NilaiSID.MENUNGGU,
-        "catatan_verifikator": n.catatan_verifikator if n else "",
+        "verifikasi": n.verifikasi_efektif if n else NilaiSID.MENUNGGU,
+        "catatan_verifikator": (
+            n.catatan_verifikator if (n and n.verifikasi_efektif != NilaiSID.MENUNGGU) else ""
+        ),
         "diperbarui_pada": n.diperbarui_pada if n else None,
     }
 
@@ -398,8 +400,6 @@ def ubah_nilai(request, inovasi_id: int, indikator_id: int, data: BuktiIn):
     n.pilihan, n.catatan, n.tautan = data.pilihan, data.catatan, data.tautan
     n.basis_ukur = data.basis_ukur
     n.diperbarui_oleh = request.user
-    if not request.user.bisa_verifikasi:
-        n.tandai_ulang()
     n.save()
     return baris_nilai(ind, n)
 
@@ -415,8 +415,6 @@ def unggah_berkas(request, inovasi_id: int, indikator_id: int, berkas: UploadedF
     BerkasSID.objects.create(nilai=n, berkas=berkas, nama_asli=berkas.name,
                              diunggah_oleh=request.user)
     n.diperbarui_oleh = request.user
-    if not request.user.bisa_verifikasi:
-        n.tandai_ulang()
     n.save()
     LogAktivitas.catat(request.user, "unggah bukti", inv.id, str(ind))
     return {"pesan": "Berkas tersimpan."}
@@ -430,11 +428,6 @@ def hapus_berkas(request, inovasi_id: int, indikator_id: int, berkas_id: int):
     b = get_object_or_404(BerkasSID, id=berkas_id, nilai__inovasi=inv, nilai__indikator=ind)
     b.berkas.delete(save=False)
     b.delete()
-    n = NilaiSID.objects.filter(inovasi=inv, indikator=ind).first()
-    if n and not request.user.bisa_verifikasi:
-        n.tandai_ulang()
-        n.diperbarui_oleh = request.user
-        n.save()
     LogAktivitas.catat(request.user, "hapus bukti", inv.id, str(ind))
     return {"pesan": "Berkas dihapus."}
 
@@ -451,6 +444,12 @@ def verifikasi_nilai(request, inovasi_id: int, indikator_id: int, data: Verifika
         raise HttpError(400, "Tulis alasan penolakan agar OPD tahu perbaikannya.")
     n.verifikasi, n.catatan_verifikator = data.keputusan, data.catatan
     n.diverifikasi_oleh = request.user
+    # Cuplikan bukti yang sedang diperiksa verifikator saat ini juga -- kalau
+    # nanti berkas/tautan/pilihan berubah, verifikasi_efektif otomatis
+    # mendeteksinya dan mengembalikan status ke "menunggu".
+    n.verifikasi_bukti_berkas = sorted(b.id for b in n.daftar_berkas.all())
+    n.verifikasi_bukti_tautan = n.tautan
+    n.verifikasi_bukti_pilihan = n.pilihan
     n.save()
     LogAktivitas.catat(request.user, f"nilai {data.keputusan}", inv.id, str(ind))
     return baris_nilai(ind, n)

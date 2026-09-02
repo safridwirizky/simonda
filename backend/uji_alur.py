@@ -322,6 +322,73 @@ for ind in sid:
 cek("skor terverifikasi 111",
     float(c.get(f"/api/inovasi/{inv_id}", **kepala(t_vr)).json()["skor_terverifikasi"]) == 111.0)
 
+print("\n== Status verifikasi terikat ke bukti spesifik yang diperiksa ==")
+ind_ikat = sid[0]
+
+
+def bukti_sekarang():
+    b = next(x for x in c.get(f"/api/inovasi/{inv_id}", **kepala(t_vr)).json()["bukti"]
+             if x["indikator_id"] == ind_ikat.id)
+    return b
+
+
+sebelum = bukti_sekarang()
+cek("indikator sudah diterima sebelum bukti diutak-atik",
+    sebelum["verifikasi"] == "diterima", sebelum["verifikasi"])
+berkas_lama_id = sebelum["berkas"][0]["id"]
+
+# Verifikator sendiri yang menghapus berkas yang tadi ia setujui -- ini
+# skenario yang dulu tidak memicu reset sama sekali (kode lama cuma
+# mereset kalau OPD yang menghapus).
+r = c.delete(f"/api/inovasi/{inv_id}/nilai/{ind_ikat.id}/berkas/{berkas_lama_id}", **kepala(t_vr))
+cek("verifikator berhasil hapus berkas yang sudah disetujui", r.status_code == 200, r.content[:200])
+
+setelah_hapus = bukti_sekarang()
+cek("status otomatis kembali menunggu begitu berkas yang diperiksa hilang",
+    setelah_hapus["verifikasi"] == "menunggu", setelah_hapus["verifikasi"])
+cek("catatan verifikator lama tidak ikut nampang di status menunggu",
+    setelah_hapus["catatan_verifikator"] == "", setelah_hapus["catatan_verifikator"])
+
+skor_setelah_hapus = float(c.get(f"/api/inovasi/{inv_id}", **kepala(t_vr)).json()["skor_terverifikasi"])
+cek("skor terverifikasi ikut turun karena bukti yang disetujui sudah tidak ada",
+    skor_setelah_hapus == 111.0 - float(ind_ikat.bobot) * 3, skor_setelah_hapus)
+
+# Unggah berkas BARU (bukan berkas lama yang sama) ke indikator yang sama.
+r = c.post(f"/api/inovasi/{inv_id}/nilai/{ind_ikat.id}/berkas",
+           {"berkas": SimpleUploadedFile("bukti-baru.pdf", b"bukti pengganti",
+                                         content_type="application/pdf")},
+           **kepala(t_vr))
+cek("berkas baru berhasil diunggah menggantikan yang lama", r.status_code == 200, r.content[:200])
+setelah_unggah_baru = bukti_sekarang()
+cek("berkas baru saja belum otomatis 'diterima' -- verifikator belum memeriksa berkas ini",
+    setelah_unggah_baru["verifikasi"] == "menunggu", setelah_unggah_baru["verifikasi"])
+
+# Verifikator memeriksa ulang dan menyetujui bukti yang baru.
+c.post(f"/api/inovasi/{inv_id}/nilai/{ind_ikat.id}/verifikasi",
+       {"keputusan": "diterima", "catatan": "Bukti pengganti sudah sesuai."},
+       content_type="application/json", **kepala(t_vr))
+setelah_setuju_lagi = bukti_sekarang()
+cek("disetujui lagi setelah verifikator memeriksa bukti barunya",
+    setelah_setuju_lagi["verifikasi"] == "diterima", setelah_setuju_lagi["verifikasi"])
+skor_pulih = float(c.get(f"/api/inovasi/{inv_id}", **kepala(t_vr)).json()["skor_terverifikasi"])
+cek("skor terverifikasi pulih ke 111 setelah bukti baru disetujui", skor_pulih == 111.0, skor_pulih)
+
+# Mengubah pilihan (tanpa menyentuh berkas) pada indikator yang sudah
+# disetujui juga harus melepas ikatan verifikasinya.
+c.put(f"/api/inovasi/{inv_id}/nilai/{ind_ikat.id}", {"pilihan": 1},
+      content_type="application/json", **kepala(t_vr))
+setelah_ganti_pilihan = bukti_sekarang()
+cek("ganti pilihan pada baris yang sudah disetujui melepas status diterima",
+    setelah_ganti_pilihan["verifikasi"] == "menunggu", setelah_ganti_pilihan["verifikasi"])
+# kembalikan seperti semula supaya total skor di bawah tidak berubah
+c.put(f"/api/inovasi/{inv_id}/nilai/{ind_ikat.id}", {"pilihan": 3},
+      content_type="application/json", **kepala(t_vr))
+c.post(f"/api/inovasi/{inv_id}/nilai/{ind_ikat.id}/verifikasi",
+       {"keputusan": "diterima", "catatan": "Dikembalikan seperti semula."},
+       content_type="application/json", **kepala(t_vr))
+cek("skor terverifikasi 111 lagi setelah dikembalikan dan disetujui ulang",
+    float(c.get(f"/api/inovasi/{inv_id}", **kepala(t_vr)).json()["skor_terverifikasi"]) == 111.0)
+
 print("\n== Aturan 6 dari 6 urusan wajib pelayanan dasar ==")
 pr = c.get("/api/statistik/ringkasan", **kepala(t_vr)).json()["proyeksi_terverifikasi"]
 cek("baru 1 urusan yandas", pr["yandas_terpenuhi"] == 1, pr["yandas_terpenuhi"])

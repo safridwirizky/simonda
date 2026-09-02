@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { InovasiDetail, NilaiBukti, UserProfile } from '../types';
 import { BASIS_KEMANFAATAN, PARAMETER_KEMANFAATAN, KLASIFIKASI_KEMATANGAN } from '../api';
 import {
@@ -68,6 +68,21 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
 
   const [saving, setSaving] = useState(false);
   const [deletingBerkasId, setDeletingBerkasId] = useState<number | null>(null);
+
+  // Berkas/tautan/pilihan yang berubah di server (mis. berkas dihapus) bisa
+  // melepas status verifikasi baris ini (lihat NilaiSID.verifikasi_efektif di
+  // backend). selectedIndikator adalah salinan lokal yang diambil saat modal
+  // dibuka, jadi begitu inovasi.bukti diperbarui dari server, sinkronkan
+  // ulang baris yang sedang dibuka supaya status/catatan yang tampil tidak basi.
+  useEffect(() => {
+    if (!selectedIndikator) return;
+    const segar = inovasi.bukti.find((b) => b.indikator_id === selectedIndikator.indikator_id);
+    if (!segar) return;
+    setSelectedIndikator(segar);
+    setVerifDecision(segar.verifikasi === 'ditolak' ? 'ditolak' : 'diterima');
+    setVerifIndikatorCatatan(segar.catatan_verifikator || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inovasi.bukti]);
 
   const openIndikatorModal = (b: NilaiBukti) => {
     setSelectedIndikator(b);
