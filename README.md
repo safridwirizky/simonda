@@ -58,7 +58,7 @@ Inovasi yang gagal syarat ini ditandai dan tidak ikut diekspor.
 SPD dan SID: memilih parameter 1–3 tidak langsung terhitung — skor baris itu
 tetap nol sampai ada bukti dukungnya (Bapperida untuk SPD, OPD pelapor untuk
 SID). Bukti dukung boleh berupa **berkas terunggah atau tautan** — dokumen di
-atas 10 MB tidak lolos batas unggah, jadi tautan (mis. Google Drive) dipakai
+atas 1 MB tidak lolos batas unggah, jadi tautan (mis. Google Drive) dipakai
 sebagai gantinya dan tetap membuka skor. `NilaiSPD.skor` dan `NilaiSID.skor`
 sama-sama mengecek `daftar_berkas.exists() or tautan` sebelum menghitung
 `bobot x pilihan` — satu-satunya titik sumber kebenaran, dipakai baik untuk

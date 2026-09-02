@@ -83,7 +83,7 @@ total_spd_tanpa_berkas = sum(float(x["skor"]) for x in c.get("/api/spd", **kepal
 cek("skor SPD masih nol walau parameter terisi (belum ada berkas)",
     total_spd_tanpa_berkas == 0.0, total_spd_tanpa_berkas)
 
-print("\n== Tautan sebagai pengganti berkas (dokumen di atas 10MB) ==")
+print("\n== Tautan sebagai pengganti berkas (dokumen di atas 1MB) ==")
 r = c.put(f"/api/spd/{spd[2].id}", {"pilihan": 2, "tautan": "https://drive.google.com/uji-tautan-spd"},
           content_type="application/json", **kepala(t_vr))
 baris_tautan_spd = next(x for x in c.get("/api/spd", **kepala(t_vr)).json() if x["indikator_id"] == spd[2].id)
@@ -203,7 +203,7 @@ cek("tidak ada indikator wajib kosong", d["wajib_belum_terisi"] == [])
 cek("inovasi jadi layak walau skor masih nol (layak = kelengkapan data, bukan berkas)",
     d["layak"] is True)
 
-print("\n== Tautan sebagai pengganti berkas (dokumen di atas 10MB) ==")
+print("\n== Tautan sebagai pengganti berkas (dokumen di atas 1MB) ==")
 sid_tautan = sid[1]
 # pilihan tetap 3 (sama seperti pengisian massal di atas) supaya total 111 di
 # bawah tidak berubah -- di sini yang diuji cuma bahwa tautan saja sudah

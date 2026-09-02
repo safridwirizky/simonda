@@ -598,7 +598,7 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
                   Tautan / Link Google Drive / Website
                 </label>
                 <p className="text-[11px] text-slate-500 mb-1">
-                  Berkas di atas 10MB tidak bisa diunggah langsung — isi tautan Google Drive
+                  Berkas di atas 1MB tidak bisa diunggah langsung — isi tautan Google Drive
                   atau sejenisnya di sini sebagai gantinya, skor tetap terhitung.
                 </p>
                 <input
@@ -654,7 +654,7 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tambah Berkas Baru (boleh lebih dari satu, maks 10MB per berkas)
+                  Tambah Berkas Baru (boleh lebih dari satu, maks 1MB per berkas)
                 </label>
                 <input
                   type="file"

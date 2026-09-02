@@ -139,7 +139,7 @@ class NilaiSPD(models.Model):
     @property
     def skor(self):
         """Parameter terpilih belum menyumbang skor sampai ada bukti dukung --
-        berkas terunggah, atau tautan (dipakai saat berkas lebih dari 10 MB
+        berkas terunggah, atau tautan (dipakai saat berkas lebih dari 1 MB
         dan tidak lolos batas unggah). Klaim tanpa bukti sama sekali tidak
         boleh terhitung."""
         if not self.daftar_berkas.exists() and not self.tautan:
@@ -367,7 +367,7 @@ class NilaiSID(models.Model):
     def skor(self):
         """Sama seperti SPD -- parameter terpilih belum menyumbang skor sampai
         ada bukti dukung: berkas terunggah, atau tautan (dipakai saat berkas
-        lebih dari 10 MB dan tidak lolos batas unggah)."""
+        lebih dari 1 MB dan tidak lolos batas unggah)."""
         if not self.daftar_berkas.exists() and not self.tautan:
             return Decimal("0")
         return iga.skor_baris(self.indikator.bobot, self.pilihan)

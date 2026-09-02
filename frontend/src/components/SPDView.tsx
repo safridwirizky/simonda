@@ -221,7 +221,7 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
                   Link Tautan / Dokumen Pendukung
                 </label>
                 <p className="text-[11px] text-slate-500 mb-1">
-                  Berkas di atas 10MB tidak bisa diunggah langsung — isi tautan Google Drive
+                  Berkas di atas 1MB tidak bisa diunggah langsung — isi tautan Google Drive
                   atau sejenisnya di sini sebagai gantinya, skor tetap terhitung.
                 </p>
                 <input
@@ -283,7 +283,7 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  Tambah Berkas Baru (boleh lebih dari satu, maks 10MB per berkas)
+                  Tambah Berkas Baru (boleh lebih dari satu, maks 1MB per berkas)
                 </label>
                 {editPilihan > 0 && selectedSpd.berkas.length === 0 && uploadingFiles.length === 0 && !editTautan && (
                   <p className="text-[11px] text-amber-600 font-semibold mb-1">

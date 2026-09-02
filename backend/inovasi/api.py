@@ -29,7 +29,7 @@ from .schemas import (
 )
 
 MASA_TOKEN = timedelta(hours=12)
-MAKS_BERKAS = 10 * 1024 * 1024  # 10 MB
+MAKS_BERKAS = 1 * 1024 * 1024  # 1 MB
 
 
 # ----------------------------- autentikasi ----------------------------
@@ -412,7 +412,7 @@ def unggah_berkas(request, inovasi_id: int, indikator_id: int, berkas: UploadedF
     inv = get_object_or_404(inovasi_terlihat(request.user), id=inovasi_id)
     pastikan_boleh_ubah(request.user, inv)
     if berkas.size > MAKS_BERKAS:
-        raise HttpError(413, "Ukuran berkas melebihi 10 MB. Kecilkan dulu atau kirim tautan.")
+        raise HttpError(413, "Ukuran berkas melebihi 1 MB. Kecilkan dulu atau kirim tautan.")
     ind = get_object_or_404(Indikator, id=indikator_id, periode=inv.periode)
     n, _ = NilaiSID.objects.get_or_create(inovasi=inv, indikator=ind)
     BerkasSID.objects.create(nilai=n, berkas=berkas, nama_asli=berkas.name,
@@ -500,7 +500,7 @@ def ubah_spd(request, indikator_id: int, data: NilaiSPDIn):
 def unggah_berkas_spd(request, indikator_id: int, berkas: UploadedFile = File(...)):
     wajib_verifikator(request)
     if berkas.size > MAKS_BERKAS:
-        raise HttpError(413, "Ukuran berkas melebihi 10 MB. Kecilkan dulu atau kirim tautan.")
+        raise HttpError(413, "Ukuran berkas melebihi 1 MB. Kecilkan dulu atau kirim tautan.")
     p = periode_aktif()
     ind = get_object_or_404(Indikator, id=indikator_id, periode=p, aspek=Indikator.SPD)
     n, _ = NilaiSPD.objects.get_or_create(periode=p, indikator=ind)
