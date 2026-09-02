@@ -128,6 +128,29 @@ SID = [
 # menampilkan kolom nomor dan tanggal surat/dokumen tambahan.
 INDIKATOR_PERLU_DOKUMEN = [16, 17, 18, 20, 21, 22, 23, 24, 28, 31]
 
+# ------------------------- ekstensi berkas bukti dukung -------------------------
+# SPD selalu PDF -- dokumen kebijakan/legal tingkat daerah. SID default PDF,
+# kecuali indikator 35 (Video inovasi daerah, wajib berkas video) dan
+# indikator 25 & 30 (Sosialisasi Inovasi Daerah, Layanan Terintegrasi -- lazim
+# berupa tangkapan layar/foto selain dokumen PDF).
+EKSTENSI_SPD = ["pdf"]
+EKSTENSI_SID_DEFAULT = ["pdf"]
+EKSTENSI_SID_GAMBAR = ["pdf", "jpg", "jpeg", "png"]
+EKSTENSI_SID_VIDEO = ["mp4", "mov", "avi", "mkv", "webm", "wmv", "m4v", "3gp", "mpeg", "mpg"]
+
+INDIKATOR_SID_VIDEO = [35]
+INDIKATOR_SID_GAMBAR = [25, 30]
+
+
+def ekstensi_sid_diizinkan(nomor_indikator: int) -> list:
+    """Ekstensi berkas yang diterima untuk satu indikator SID."""
+    if nomor_indikator in INDIKATOR_SID_VIDEO:
+        return EKSTENSI_SID_VIDEO
+    if nomor_indikator in INDIKATOR_SID_GAMBAR:
+        return EKSTENSI_SID_GAMBAR
+    return EKSTENSI_SID_DEFAULT
+
+
 # Basis ukur alternatif indikator 33 (Kemanfaatan Inovasi), Lampiran II butir 33
 # a-f. OPD memilih tepat satu basis -- tiap basis punya ambang parameter 1-3
 # sendiri, tidak bisa dicampur.

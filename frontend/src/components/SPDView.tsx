@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NilaiSPD } from '../types';
 import { FileSpreadsheet, Check, ExternalLink, Trash2 } from 'lucide-react';
+import { acceptBerkas, EKSTENSI_SPD } from '../api';
 
 interface SPDViewProps {
   spdData: NilaiSPD[] | null;
@@ -283,7 +284,7 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">
-                  Tambah Berkas Baru (boleh lebih dari satu, maks 1MB per berkas)
+                  Tambah Berkas Baru (boleh lebih dari satu, maks 1MB per berkas, format PDF)
                 </label>
                 {editPilihan > 0 && selectedSpd.berkas.length === 0 && uploadingFiles.length === 0 && !editTautan && (
                   <p className="text-[11px] text-amber-600 font-semibold mb-1">
@@ -293,6 +294,7 @@ export const SPDView: React.FC<SPDViewProps> = ({ spdData, onUpdateSpd, onUpload
                 <input
                   type="file"
                   multiple
+                  accept={acceptBerkas(EKSTENSI_SPD)}
                   onChange={(e) => setUploadingFiles(Array.from(e.target.files || []))}
                   className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
                 />

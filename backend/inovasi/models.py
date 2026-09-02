@@ -152,7 +152,7 @@ class BerkasSPD(models.Model):
     menumpuk pada indikator yang sama -- unggahan baru tidak menimpa yang lama."""
 
     nilai = models.ForeignKey(NilaiSPD, on_delete=models.CASCADE, related_name="daftar_berkas")
-    berkas = models.FileField(upload_to="spd/%Y/")
+    berkas = models.FileField(upload_to="spd/%Y/", validators=[FileExtensionValidator(["pdf"])])
     nama_asli = models.CharField(max_length=255, blank=True)
     diunggah_oleh = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
                                       on_delete=models.SET_NULL, related_name="+")
@@ -397,10 +397,17 @@ class BerkasSID(models.Model):
     tidak menimpa yang lama."""
 
     nilai = models.ForeignKey(NilaiSID, on_delete=models.CASCADE, related_name="daftar_berkas")
+    # Superset seluruh ekstensi yang mungkin diterima lintas indikator SID --
+    # penyaringan yang sesungguhnya (per indikator: PDF saja, PDF+gambar untuk
+    # 25/30, atau video saja untuk 35) dilakukan di endpoint unggah_berkas
+    # lewat iga.ekstensi_sid_diizinkan(), karena ekstensi yang diizinkan
+    # berbeda-beda per indikator dan FileExtensionValidator di sini tidak bisa
+    # tahu indikator mana yang sedang diisi.
     berkas = models.FileField(
         upload_to=path_bukti,
         validators=[FileExtensionValidator(
-            ["pdf", "jpg", "jpeg", "png", "doc", "docx", "xls", "xlsx", "mp4"])])
+            list(dict.fromkeys(iga.EKSTENSI_SID_DEFAULT + iga.EKSTENSI_SID_GAMBAR
+                                + iga.EKSTENSI_SID_VIDEO)))])
     nama_asli = models.CharField(max_length=255, blank=True)
     diunggah_oleh = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,
                                       on_delete=models.SET_NULL, related_name="+")

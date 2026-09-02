@@ -98,6 +98,29 @@ export const PARAMETER_KEMANFAATAN: Record<string, [string, string, string]> = {
 // iga.INDIKATOR_PERLU_DOKUMEN di backend.
 export const INDIKATOR_PERLU_DOKUMEN = [16, 17, 18, 20, 21, 22, 23, 24, 28, 31];
 
+// Ekstensi berkas yang diterima per indikator SID. Default PDF saja, kecuali
+// indikator 35 (Video inovasi daerah, wajib video) dan indikator 25 & 30
+// (Sosialisasi Inovasi Daerah, Layanan Terintegrasi -- PDF atau gambar).
+// Harus sama persis dengan iga.ekstensi_sid_diizinkan() di backend --
+// pengecekan yang sesungguhnya tetap dilakukan di server, ini cuma untuk
+// atribut `accept` dan pesan bantuan di formulir.
+export const EKSTENSI_SPD = ['pdf'];
+export const EKSTENSI_SID_DEFAULT = ['pdf'];
+export const EKSTENSI_SID_GAMBAR = ['pdf', 'jpg', 'jpeg', 'png'];
+export const EKSTENSI_SID_VIDEO = ['mp4', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'm4v', '3gp', 'mpeg', 'mpg'];
+const INDIKATOR_SID_VIDEO = [35];
+const INDIKATOR_SID_GAMBAR = [25, 30];
+
+export function ekstensiSidDiizinkan(nomorIndikator: number): string[] {
+  if (INDIKATOR_SID_VIDEO.includes(nomorIndikator)) return EKSTENSI_SID_VIDEO;
+  if (INDIKATOR_SID_GAMBAR.includes(nomorIndikator)) return EKSTENSI_SID_GAMBAR;
+  return EKSTENSI_SID_DEFAULT;
+}
+
+export function acceptBerkas(ekstensi: string[]): string {
+  return ekstensi.map((e) => `.${e}`).join(',');
+}
+
 export const KLASIFIKASI_KEMATANGAN: Record<
   'danger' | 'warning' | 'hijau',
   { label: string; deskripsi: string; badge: string; dot: string; solid: string }

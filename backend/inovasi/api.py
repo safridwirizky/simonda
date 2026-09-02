@@ -32,6 +32,19 @@ MASA_TOKEN = timedelta(hours=12)
 MAKS_BERKAS = 1 * 1024 * 1024  # 1 MB
 
 
+def ekstensi_berkas(nama: str) -> str:
+    return nama.rsplit(".", 1)[-1].lower() if "." in nama else ""
+
+
+def pastikan_ekstensi_diizinkan(nama_berkas: str, diizinkan: list, label: str):
+    if ekstensi_berkas(nama_berkas) not in diizinkan:
+        raise HttpError(
+            415,
+            f"Tipe berkas tidak didukung untuk {label}. "
+            f"Format yang diterima: {', '.join(e.upper() for e in diizinkan)}.",
+        )
+
+
 # ----------------------------- autentikasi ----------------------------
 
 def buat_token(user: User) -> tuple[str, datetime]:
@@ -414,6 +427,8 @@ def unggah_berkas(request, inovasi_id: int, indikator_id: int, berkas: UploadedF
     if berkas.size > MAKS_BERKAS:
         raise HttpError(413, "Ukuran berkas melebihi 1 MB. Kecilkan dulu atau kirim tautan.")
     ind = get_object_or_404(Indikator, id=indikator_id, periode=inv.periode)
+    pastikan_ekstensi_diizinkan(
+        berkas.name, iga.ekstensi_sid_diizinkan(ind.nomor), f"indikator {ind.kode}")
     n, _ = NilaiSID.objects.get_or_create(inovasi=inv, indikator=ind)
     BerkasSID.objects.create(nilai=n, berkas=berkas, nama_asli=berkas.name,
                              diunggah_oleh=request.user)
@@ -501,6 +516,7 @@ def unggah_berkas_spd(request, indikator_id: int, berkas: UploadedFile = File(..
     wajib_verifikator(request)
     if berkas.size > MAKS_BERKAS:
         raise HttpError(413, "Ukuran berkas melebihi 1 MB. Kecilkan dulu atau kirim tautan.")
+    pastikan_ekstensi_diizinkan(berkas.name, iga.EKSTENSI_SPD, "indikator SPD")
     p = periode_aktif()
     ind = get_object_or_404(Indikator, id=indikator_id, periode=p, aspek=Indikator.SPD)
     n, _ = NilaiSPD.objects.get_or_create(periode=p, indikator=ind)

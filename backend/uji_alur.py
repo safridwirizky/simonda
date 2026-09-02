@@ -34,6 +34,15 @@ def kepala(t):
     return {"HTTP_AUTHORIZATION": f"Bearer {t}"}
 
 
+def berkas_uji(ind, awalan="sid"):
+    """Berkas contoh dengan ekstensi sesuai aturan per indikator (lihat
+    iga.ekstensi_sid_diizinkan) -- indikator 35 (Video inovasi daerah) hanya
+    menerima video, jadi tidak bisa dipakai bersama .pdf seperti indikator lain."""
+    if ind.nomor == 35:
+        return SimpleUploadedFile(f"{awalan}-{ind.id}.mp4", b"isi video uji", content_type="video/mp4")
+    return SimpleUploadedFile(f"{awalan}-{ind.id}.pdf", b"isi SID uji", content_type="application/pdf")
+
+
 def masuk(nama):
     r = c.post("/api/auth/masuk", {"username": nama, "password": SANDI},
                content_type="application/json")
@@ -217,10 +226,7 @@ cek("skor SID terhitung lewat tautan saja, tanpa berkas",
 cek("murni tautan, tidak ada berkas tersimpan", len(baris_tautan_sid["berkas"]) == 0, baris_tautan_sid["berkas"])
 
 for ind in sid:
-    c.post(f"/api/inovasi/{inv_id}/nilai/{ind.id}/berkas",
-           {"berkas": SimpleUploadedFile(f"sid-{ind.id}.pdf", b"isi SID uji",
-                                         content_type="application/pdf")},
-           **kepala(t_op))
+    c.post(f"/api/inovasi/{inv_id}/nilai/{ind.id}/berkas", {"berkas": berkas_uji(ind)}, **kepala(t_op))
 d = c.get(f"/api/inovasi/{inv_id}", **kepala(t_op)).json()
 cek("skor SID sempurna 111 setelah seluruh berkas diunggah", float(d["skor_klaim"]) == 111.0, d["skor_klaim"])
 
@@ -299,6 +305,47 @@ cek("satu berkas berkurang setelah hapus, sisanya tetap ada",
     len(bukti_sid0_setelah["berkas"]) == jumlah_awal + 1, bukti_sid0_setelah["berkas"])
 cek("skor tetap terhitung karena masih ada berkas lain",
     float(bukti_sid0_setelah["skor"]) == float(bukti_sid0_setelah["bobot"]) * 3, bukti_sid0_setelah["skor"])
+
+print("\n== Ekstensi berkas dibatasi per indikator ==")
+ind_biasa = sid[0]          # nomor 16 -- default, hanya PDF
+ind_gambar = next(i for i in sid if i.nomor == 25)   # PDF + gambar
+ind_video = next(i for i in sid if i.nomor == 35)    # video saja
+
+r = c.post(f"/api/inovasi/{inv_id}/nilai/{ind_biasa.id}/berkas",
+           {"berkas": SimpleUploadedFile("bukan-pdf.jpg", b"isi", content_type="image/jpeg")},
+           **kepala(t_op))
+cek("indikator biasa menolak gambar, cuma terima PDF", r.status_code == 415, r.content[:200])
+
+r = c.post(f"/api/inovasi/{inv_id}/nilai/{ind_gambar.id}/berkas",
+           {"berkas": SimpleUploadedFile("foto-sosialisasi.jpg", b"isi", content_type="image/jpeg")},
+           **kepala(t_op))
+cek("indikator 25 (Sosialisasi) menerima JPG", r.status_code == 200, r.content[:200])
+r = c.post(f"/api/inovasi/{inv_id}/nilai/{ind_gambar.id}/berkas",
+           {"berkas": SimpleUploadedFile("dokumen.pdf", b"isi", content_type="application/pdf")},
+           **kepala(t_op))
+cek("indikator 25 tetap menerima PDF juga", r.status_code == 200, r.content[:200])
+r = c.post(f"/api/inovasi/{inv_id}/nilai/{ind_gambar.id}/berkas",
+           {"berkas": SimpleUploadedFile("video.mp4", b"isi", content_type="video/mp4")},
+           **kepala(t_op))
+cek("indikator 25 menolak video", r.status_code == 415, r.content[:200])
+
+r = c.post(f"/api/inovasi/{inv_id}/nilai/{ind_video.id}/berkas",
+           {"berkas": SimpleUploadedFile("bukan-video.pdf", b"isi", content_type="application/pdf")},
+           **kepala(t_op))
+cek("indikator 35 (Video) menolak PDF", r.status_code == 415, r.content[:200])
+r = c.post(f"/api/inovasi/{inv_id}/nilai/{ind_video.id}/berkas",
+           {"berkas": SimpleUploadedFile("dokumentasi.mov", b"isi", content_type="video/quicktime")},
+           **kepala(t_op))
+cek("indikator 35 menerima format video lain (.mov)", r.status_code == 200, r.content[:200])
+
+r = c.post(f"/api/spd/{spd[0].id}/berkas",
+           {"berkas": SimpleUploadedFile("bukan-pdf.png", b"isi", content_type="image/png")},
+           **kepala(t_vr))
+cek("SPD menolak gambar, cuma terima PDF", r.status_code == 415, r.content[:200])
+r = c.post(f"/api/spd/{spd[0].id}/berkas",
+           {"berkas": SimpleUploadedFile("sk-tambahan.pdf", b"isi", content_type="application/pdf")},
+           **kepala(t_vr))
+cek("SPD tetap menerima PDF", r.status_code == 200, r.content[:200])
 
 print("\n== Isolasi antar OPD ==")
 cek("OPD lain tidak melihat", c.get(f"/api/inovasi/{inv_id}", **kepala(t_op2)).status_code == 404)
@@ -411,9 +458,7 @@ def buat_lengkap(nama, urusan, token):
         c.put(f"/api/inovasi/{iid}/nilai/{ind.id}", isi,
               content_type="application/json", **kepala(token))
         c.post(f"/api/inovasi/{iid}/nilai/{ind.id}/berkas",
-               {"berkas": SimpleUploadedFile(f"sk-{iid}-{ind.id}.pdf", b"isi SID uji",
-                                             content_type="application/pdf")},
-               **kepala(token))
+               {"berkas": berkas_uji(ind, awalan=f"sk-{iid}")}, **kepala(token))
         c.post(f"/api/inovasi/{iid}/nilai/{ind.id}/verifikasi", {"keputusan": "diterima"},
                content_type="application/json", **kepala(t_vr))
     c.post(f"/api/inovasi/{iid}/ajukan", **kepala(token))

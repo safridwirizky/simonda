@@ -68,6 +68,15 @@ tanpa bukti sama sekali tidak boleh memengaruhi proyeksi indeks.
 Setiap kali OPD mengubah bukti, status verifikasinya otomatis kembali ke
 "menunggu". Bukti lama tidak bisa diam-diam diganti setelah disetujui.
 
+**Format berkas dibatasi per jenis bukti.** SPD selalu PDF. SID juga PDF
+secara default, kecuali indikator 35 (Video inovasi daerah) yang hanya
+menerima berkas video, dan indikator 25 & 30 (Sosialisasi Inovasi Daerah,
+Layanan Terintegrasi) yang menerima PDF maupun gambar (JPG/PNG) — keduanya
+lazim berupa tangkapan layar atau foto kegiatan, bukan dokumen resmi.
+`iga.ekstensi_sid_diizinkan()` menyimpan pemetaan ini, dipakai endpoint
+unggah berkas di `api.py` sebelum berkas disimpan; berkas dengan ekstensi
+yang tidak sesuai ditolak (415) sebelum sempat menyentuh penyimpanan.
+
 **Satu indikator boleh punya banyak berkas.** Mengunggah berkas baru menambah
 daftar, bukan menimpa berkas sebelumnya — model `BerkasSPD`/`BerkasSID`
 menyimpan tiap berkas sebagai baris tersendiri (relasi satu-ke-banyak ke

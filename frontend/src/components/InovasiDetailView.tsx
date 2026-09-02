@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { InovasiDetail, NilaiBukti, UserProfile } from '../types';
-import { BASIS_KEMANFAATAN, PARAMETER_KEMANFAATAN, KLASIFIKASI_KEMATANGAN, INDIKATOR_PERLU_DOKUMEN } from '../api';
+import {
+  BASIS_KEMANFAATAN,
+  PARAMETER_KEMANFAATAN,
+  KLASIFIKASI_KEMATANGAN,
+  INDIKATOR_PERLU_DOKUMEN,
+  ekstensiSidDiizinkan,
+  acceptBerkas,
+} from '../api';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -653,15 +660,24 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tambah Berkas Baru (boleh lebih dari satu, maks 1MB per berkas)
-                </label>
-                <input
-                  type="file"
-                  multiple
-                  onChange={(e) => setUploadingFiles(Array.from(e.target.files || []))}
-                  className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
-                />
+                {(() => {
+                  const ekstensi = ekstensiSidDiizinkan(selectedIndikator.nomor);
+                  return (
+                    <>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Tambah Berkas Baru (boleh lebih dari satu, maks 1MB per berkas, format{' '}
+                        {ekstensi.map((e) => e.toUpperCase()).join('/')})
+                      </label>
+                      <input
+                        type="file"
+                        multiple
+                        accept={acceptBerkas(ekstensi)}
+                        onChange={(e) => setUploadingFiles(Array.from(e.target.files || []))}
+                        className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+                      />
+                    </>
+                  );
+                })()}
                 {uploadingFiles.length > 0 && (
                   <p className="text-[11px] text-slate-500 mt-1">
                     {uploadingFiles.length} berkas dipilih, akan diunggah saat disimpan.
