@@ -289,16 +289,16 @@ class Inovasi(models.Model):
     def masalah_kelayakan(self):
         """Syarat umur inovasi dan panjang rancang bangun, Lampiran I butir IV.B."""
         pesan = []
-        batas_awal, batas_akhir = date(2024, 1, 1), date(2025, 12, 31)
+        batas_awal, batas_akhir = date(2025, 1, 1), date(2026, 12, 31)
         if not self.mulai_penerapan:
             pesan.append("Waktu penerapan awal belum diisi.")
         elif self.mulai_penerapan > batas_akhir:
-            pesan.append("Penerapan setelah 31 Desember 2025, belum bisa dilaporkan tahun ini.")
+            pesan.append("Penerapan setelah 31 Desember 2026, belum bisa dilaporkan tahun ini.")
         elif self.mulai_penerapan < batas_awal and not self.pengembangan_terbaru:
-            pesan.append("Penerapan sebelum 2024. Isi waktu pengembangan terbaru, "
+            pesan.append("Penerapan sebelum 2025. Isi waktu pengembangan terbaru, "
                          "atau inovasi ini tidak memenuhi syarat.")
         elif self.pengembangan_terbaru and not (batas_awal <= self.pengembangan_terbaru <= batas_akhir):
-            pesan.append("Pengembangan terbaru di luar rentang 2024 sampai 2025.")
+            pesan.append("Pengembangan terbaru di luar rentang 2025 sampai 2026.")
 
         kata = len(self.rancang_bangun.split())
         if kata < 300:

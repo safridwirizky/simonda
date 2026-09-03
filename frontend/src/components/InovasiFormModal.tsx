@@ -209,7 +209,7 @@ export const InovasiFormModal: React.FC<InovasiFormModalProps> = ({
                 onChange={(e) => setMulaiPenerapan(e.target.value)}
                 className="w-full p-2 border border-slate-200 rounded-xl"
               />
-              <span className="text-[10px] text-slate-400">Harus dalam rentang 1 Jan 2024 - 31 Des 2025</span>
+              <span className="text-[10px] text-slate-400">Harus dalam rentang 1 Jan 2025 - 31 Des 2026</span>
             </div>
           </div>
 

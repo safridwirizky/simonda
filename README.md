@@ -50,8 +50,8 @@ maksimum. Beranda menampilkan urusan mana yang masih kosong.
 **Pembagi MAX(14, n).** Melaporkan kurang dari 14 inovasi tetap dibagi 14, jadi
 rata-rata kematangan ikut turun. Sistem menampilkan berapa "kursi kosong" tersisa.
 
-**Syarat umur inovasi.** Penerapan harus antara 1 Januari 2024 dan 31 Desember
-2025, atau ada pengembangan dalam rentang itu. Rancang bangun minimal 300 kata.
+**Syarat umur inovasi.** Penerapan harus antara 1 Januari 2025 dan 31 Desember
+2026, atau ada pengembangan dalam rentang itu. Rancang bangun minimal 300 kata.
 Inovasi yang gagal syarat ini ditandai dan tidak ikut diekspor.
 
 **Indikator tanpa bukti dukung tidak menyumbang skor.** Berlaku sama untuk

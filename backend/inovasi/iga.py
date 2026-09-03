@@ -212,8 +212,8 @@ KATEGORI = [
 ]
 
 # Jendela pelaporan dan syarat umur inovasi (Lampiran I butir IV.B dan XIII)
-PENERAPAN_MULAI = "2024-01-01"
-PENERAPAN_SAMPAI = "2025-12-31"
+PENERAPAN_MULAI = "2025-01-01"
+PENERAPAN_SAMPAI = "2026-12-31"
 
 
 # ------------------------------ perhitungan -------------------------------

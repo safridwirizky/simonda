@@ -159,7 +159,7 @@ print("\n== Membuat inovasi ==")
 r = c.post("/api/inovasi", {
     "nama": "SIPADU \u2014 Pendaftaran Pasien Daring", "tahapan": "penerapan",
     "jenis": "digital", "bentuk": "pelayanan_publik", "urusan": "Kesehatan",
-    "tujuan": "Memangkas antrean di puskesmas.", "mulai_penerapan": "2024-03-01",
+    "tujuan": "Memangkas antrean di puskesmas.", "mulai_penerapan": "2025-03-01",
 }, content_type="application/json", **kepala(t_op))
 cek("inovasi dibuat", r.status_code == 201, r.content[:200])
 inv = r.json()
@@ -175,23 +175,23 @@ cek("rancang bangun kurang dari 300 kata ditandai",
 cek("inovasi belum layak", inv["layak"] is False)
 
 dasar = {"nama": inv["nama"], "urusan": "Kesehatan", "tahapan": "penerapan", "tujuan": "x"}
-r = c.put(f"/api/inovasi/{inv_id}", {**dasar, "mulai_penerapan": "2026-01-01",
+r = c.put(f"/api/inovasi/{inv_id}", {**dasar, "mulai_penerapan": "2027-01-01",
                                      "rancang_bangun": "kata " * 300},
           content_type="application/json", **kepala(t_op))
-cek("penerapan 2026 ditolak", any("31 Desember 2025" in m for m in r.json()["masalah_kelayakan"]),
+cek("penerapan 2027 ditolak", any("31 Desember 2026" in m for m in r.json()["masalah_kelayakan"]),
     r.json()["masalah_kelayakan"])
 
 r = c.put(f"/api/inovasi/{inv_id}", {**dasar, "mulai_penerapan": "2021-05-01",
                                      "rancang_bangun": "kata " * 300},
           content_type="application/json", **kepala(t_op))
-cek("penerapan sebelum 2024 tanpa pengembangan ditandai",
-    any("sebelum 2024" in m for m in r.json()["masalah_kelayakan"]))
+cek("penerapan sebelum 2025 tanpa pengembangan ditandai",
+    any("sebelum 2025" in m for m in r.json()["masalah_kelayakan"]))
 
 r = c.put(f"/api/inovasi/{inv_id}", {**dasar, "mulai_penerapan": "2021-05-01",
-                                     "pengembangan_terbaru": "2025-02-01",
+                                     "pengembangan_terbaru": "2026-02-01",
                                      "rancang_bangun": "kata " * 300},
           content_type="application/json", **kepala(t_op))
-cek("penerapan lama + pengembangan 2025 diterima", r.json()["masalah_kelayakan"] == [],
+cek("penerapan lama + pengembangan 2026 diterima", r.json()["masalah_kelayakan"] == [],
     r.json()["masalah_kelayakan"])
 
 print("\n== Mengisi parameter indikator SID ==")
@@ -447,7 +447,7 @@ print(f"       indeks sekarang: {pr['indeks']} ({pr['kategori']})")
 
 def buat_lengkap(nama, urusan, token):
     r = c.post("/api/inovasi", {"nama": nama, "urusan": urusan, "tahapan": "penerapan",
-                                "tujuan": "x", "mulai_penerapan": "2024-06-01",
+                                "tujuan": "x", "mulai_penerapan": "2025-06-01",
                                 "rancang_bangun": "kata " * 300},
                content_type="application/json", **kepala(token))
     iid = r.json()["id"]
