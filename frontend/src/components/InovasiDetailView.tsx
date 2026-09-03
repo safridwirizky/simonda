@@ -285,6 +285,25 @@ export const InovasiDetailView: React.FC<InovasiDetailViewProps> = ({
           </div>
         </div>
 
+        {/* Alasan belum memenuhi syarat -- terpisah dari skor/verifikasi, lihat
+            Inovasi.masalah_kelayakan dan Inovasi.wajib_belum_terisi di backend */}
+        {!inovasi.layak && (inovasi.masalah_kelayakan.length > 0 || inovasi.wajib_belum_terisi.length > 0) && (
+          <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2">
+            <div className="flex items-center space-x-2 text-amber-900 font-bold text-xs">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span>Belum Memenuhi Syarat IGA -- ini sebabnya (tidak terkait skor/verifikasi):</span>
+            </div>
+            <ul className="text-xs text-amber-800 space-y-1 list-disc list-inside">
+              {inovasi.masalah_kelayakan.map((m, i) => (
+                <li key={`mk-${i}`}>{m}</li>
+              ))}
+              {inovasi.wajib_belum_terisi.map((w, i) => (
+                <li key={`wb-${i}`}>Indikator wajib belum dipilih parameternya: {w}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Verification Alert Banner */}
         {user?.bisa_verifikasi && inovasi.status === 'diajukan' && (
           <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
