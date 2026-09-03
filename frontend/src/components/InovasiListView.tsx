@@ -218,10 +218,7 @@ export const InovasiListView: React.FC<InovasiListViewProps> = ({
                       Layak IGA
                     </span>
                   ) : (
-                    <span
-                      title="Buka detail inovasi untuk melihat alasannya -- tidak terkait skor/verifikasi"
-                      className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded flex items-center space-x-1"
-                    >
+                    <span className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-1 rounded flex items-center space-x-1">
                       <ShieldAlert className="w-3 h-3 text-amber-500" />
                       <span>Belum Layak</span>
                     </span>
