@@ -82,8 +82,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onClose, onLogin }) => {
         </form>
 
         <p className="text-[11px] text-slate-400 text-center">
-          Belum punya akun? Minta administrator membuatkannya lewat halaman Django admin
-          (<code>/admin/</code>).
+          Belum punya akun? Minta administrator membuatkannya (0895-2840-6066).
         </p>
 
       </div>
