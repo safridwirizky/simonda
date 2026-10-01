@@ -58,6 +58,7 @@ DAFTAR_OPD = [
     ("BAPENDA", "Badan Pendapatan Daerah"),
     ("BAGORGANISASI", "Bagian Organisasi"),
     ("BAGUMUM", "Bagian Umum"),
+    ("RSUD", "Rumah Sakit Umum Daerah"),
 ]
 
 class Command(BaseCommand):
