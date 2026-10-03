@@ -139,6 +139,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 CORS_ALLOWED_ORIGINS = [o for o in os.getenv(
     "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if o]
 
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
+]
+
 if not DEBUG:
     SECURE_SSL_REDIRECT = os.getenv("SSL_REDIRECT", "1") == "1"
     SESSION_COOKIE_SECURE = True
