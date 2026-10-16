@@ -13,8 +13,12 @@ backend/media/
 frontend/node_modules/
 frontend/dist/
 
+# Databases
+*.backup
+
 # Editor / OS
 .DS_Store
+*.swp
 
 # Documents
 *.docx
