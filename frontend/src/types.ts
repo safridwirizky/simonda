@@ -153,18 +153,23 @@ export interface NilaiSPD {
 }
 
 export interface ProyeksiHitungan {
+  // "daerah" (Admin/Verifikator, rumus Lampiran I penuh) atau
+  // "perangkat_daerah" (operator OPD, tanpa SPD & tanpa syarat yandas).
+  mode: 'daerah' | 'perangkat_daerah';
   jumlah_inovasi: number;
   pembagi: number;
-  skor_spd: number;
-  skor_spd_maks: number;
+  skor_spd: number | null;
+  skor_spd_maks: number | null;
   rata_kematangan: number;
   skor_jumlah_inovasi: number;
+  skor_jumlah_inovasi_maks: number;
   skor_sid: number;
   skor_total: number;
+  skor_total_maks: number;
   indeks: number;
   kategori: string;
-  yandas_terpenuhi: number;
-  yandas_kurang: number;
+  yandas_terpenuhi: number | null;
+  yandas_kurang: number | null;
   yandas_terisi: string[];
   yandas_kosong: string[];
   kursi_kosong: number;

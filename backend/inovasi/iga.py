@@ -205,6 +205,22 @@ URUSAN_YANDAS = [
     "Sosial",
 ]
 
+# ------------- konstanta penilaian khusus akun Perangkat Daerah -------------
+# Akun Perangkat Daerah (operator OPD di SANDO) tidak mengisi instrumen SPD --
+# SPD adalah indikator tingkat daerah/kabupaten (diisi verifikator/admin),
+# bukan sesuatu yang dikerjakan per Perangkat Daerah -- dan tidak dibebani
+# syarat sebaran 6 urusan wajib pelayanan dasar, karena syarat itu hanya
+# bermakna bila dihitung gabungan seluruh OPD pada level daerah. Formula di
+# bawah ini hanya menilai kematangan dan jumlah inovasi milik satu Perangkat
+# Daerah, dengan pembagi dan skala jumlah inovasi yang realistis untuk satu
+# OPD. MAKS_TOTAL_PD = 111 (rata kematangan SID, skala sama dengan akun
+# Admin) + 40 (skor jumlah inovasi versi Perangkat Daerah).
+PEMBAGI_MINIMAL_PD = 3
+MAKS_JUMLAH_INOVASI_PD = Decimal("40")
+BOBOT_JUMLAH_INOVASI_PD = Decimal("8")
+BATAS_INOVASI_PD = 5
+MAKS_TOTAL_PD = Decimal("151")
+
 KATEGORI = [
     (Decimal("65.01"), "Sangat Inovatif"),
     (Decimal("40.01"), "Inovatif"),
@@ -261,18 +277,78 @@ def hitung_indeks(skor_spd, skor_sid_tiap_inovasi: list, urusan_yandas_terpenuhi
     iid = skor_total / MAKS_TOTAL * 100
 
     return {
+        "mode": "daerah",
         "jumlah_inovasi": n,
         "pembagi": pembagi,
         "skor_spd": round(Decimal(str(skor_spd)), 2),
         "rata_kematangan": round(rata_kematangan, 2),
         "skor_jumlah_inovasi": round(skor_jumlah, 2),
+        "skor_jumlah_inovasi_maks": MAKS_JUMLAH_INOVASI,
         "skor_sid": round(skor_sid, 2),
         "skor_total": round(skor_total, 2),
+        "skor_total_maks": MAKS_TOTAL,
         "indeks": round(iid, 2),
         "kategori": kategori(iid),
         "yandas_terpenuhi": urusan_yandas_terpenuhi,
         "yandas_kurang": max(0, MIN_URUSAN_YANDAS - urusan_yandas_terpenuhi),
         "kursi_kosong": max(0, PEMBAGI_MINIMAL - n),
+    }
+
+
+def skor_jumlah_inovasi_pd(n: int) -> Decimal:
+    """Skor jumlah inovasi untuk akun Perangkat Daerah.
+
+    Tidak ada syarat sebaran urusan wajib pelayanan dasar di sini -- syarat
+    itu (lihat skor_jumlah_inovasi di atas) hanya relevan pada level daerah,
+    bukan per Perangkat Daerah.
+    """
+    return min(n, BATAS_INOVASI_PD) * BOBOT_JUMLAH_INOVASI_PD
+
+
+def hitung_indeks_pd(skor_sid_tiap_inovasi: list) -> dict:
+    """Menghitung proyeksi indeks inovasi untuk akun Perangkat Daerah.
+
+    Dipakai menggantikan hitung_indeks() saat yang login adalah akun
+    operator OPD (Perangkat Daerah), bukan Admin/Verifikator. Berbeda dari
+    hitung_indeks():
+    - tidak memasukkan skor SPD -- SPD adalah instrumen tingkat daerah yang
+      tidak diisi oleh Perangkat Daerah;
+    - tidak mensyaratkan MIN_URUSAN_YANDAS/URUSAN_YANDAS -- syarat sebaran
+      urusan wajib pelayanan dasar hanya bermakna digabung seluruh OPD;
+    - memakai PEMBAGI_MINIMAL_PD (3 inovasi per Perangkat Daerah) serta skala
+      skor jumlah inovasi (BATAS_INOVASI_PD, BOBOT_JUMLAH_INOVASI_PD,
+      MAKS_JUMLAH_INOVASI_PD) dan skor total maksimum (MAKS_TOTAL_PD) yang
+      lebih kecil, sesuai beban realistis satu Perangkat Daerah.
+
+    skor_sid_tiap_inovasi : daftar skor SID (indikator 16-35) per inovasi
+                            milik satu Perangkat Daerah
+    """
+    n = len(skor_sid_tiap_inovasi)
+    pembagi = max(PEMBAGI_MINIMAL_PD, n)
+    total_sid = sum((Decimal(str(s)) for s in skor_sid_tiap_inovasi), Decimal("0"))
+    rata_kematangan = total_sid / pembagi if pembagi else Decimal("0")
+
+    skor_jumlah = skor_jumlah_inovasi_pd(n)
+    skor_sid = rata_kematangan + skor_jumlah
+    skor_total = skor_sid
+    iid = skor_total / MAKS_TOTAL_PD * 100
+
+    return {
+        "mode": "perangkat_daerah",
+        "jumlah_inovasi": n,
+        "pembagi": pembagi,
+        "skor_spd": None,
+        "rata_kematangan": round(rata_kematangan, 2),
+        "skor_jumlah_inovasi": round(skor_jumlah, 2),
+        "skor_jumlah_inovasi_maks": MAKS_JUMLAH_INOVASI_PD,
+        "skor_sid": round(skor_sid, 2),
+        "skor_total": round(skor_total, 2),
+        "skor_total_maks": MAKS_TOTAL_PD,
+        "indeks": round(iid, 2),
+        "kategori": kategori(iid),
+        "yandas_terpenuhi": None,
+        "yandas_kurang": None,
+        "kursi_kosong": max(0, PEMBAGI_MINIMAL_PD - n),
     }
 
 

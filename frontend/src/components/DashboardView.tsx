@@ -38,8 +38,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const p = stats.proyeksi_terverifikasi;
   const pKlaim = stats.proyeksi_klaim;
+  const isDaerah = p.mode === 'daerah';
   const totalYandas = p.yandas_terisi.length + p.yandas_kosong.length;
-  const minYandas = p.yandas_terpenuhi + p.yandas_kurang;
+  const minYandas = (p.yandas_terpenuhi ?? 0) + (p.yandas_kurang ?? 0);
 
   const isSangatInovatif = p.indeks >= 65.01;
   const isInovatif = p.indeks >= 40.01 && p.indeks < 65.01;
@@ -94,10 +95,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
                 <Trophy className="w-5 h-5 text-amber-500" />
-                <span>Indeks Inovasi Daerah Terverifikasi</span>
+                <span>{isDaerah ? 'Indeks Inovasi Daerah Terverifikasi' : 'Indeks Inovasi Perangkat Daerah'}</span>
               </h2>
               <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md font-semibold">
-                Skor Maks: 250
+                Skor Maks: {p.skor_total_maks}
               </span>
             </div>
 
@@ -111,7 +112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div className="text-5xl font-black text-slate-900 tracking-tight">
                   {p.indeks.toFixed(2)}
                 </div>
-                <div className="text-xs text-slate-400 mt-1">Skor Total: {p.skor_total} / 250</div>
+                <div className="text-xs text-slate-400 mt-1">Skor Total: {p.skor_total} / {p.skor_total_maks}</div>
 
                 <div className="mt-3 inline-block">
                   <span
@@ -153,18 +154,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Detailed Score Breakdown Row */}
-          <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100 text-center text-xs mt-4">
-            <div className="p-2.5 rounded-lg bg-slate-50">
-              <span className="text-slate-500 font-medium block">SPD Daerah (15)</span>
-              <span className="text-base font-bold text-slate-900">{p.skor_spd} / 63</span>
-            </div>
+          <div className={`grid ${isDaerah ? 'grid-cols-3' : 'grid-cols-2'} gap-3 pt-4 border-t border-slate-100 text-center text-xs mt-4`}>
+            {isDaerah && (
+              <div className="p-2.5 rounded-lg bg-slate-50">
+                <span className="text-slate-500 font-medium block">SPD Daerah (15)</span>
+                <span className="text-base font-bold text-slate-900">{p.skor_spd} / {p.skor_spd_maks}</span>
+              </div>
+            )}
             <div className="p-2.5 rounded-lg bg-slate-50">
               <span className="text-slate-500 font-medium block">Rata Kematangan</span>
               <span className="text-base font-bold text-slate-900">{p.rata_kematangan}</span>
             </div>
             <div className="p-2.5 rounded-lg bg-slate-50">
               <span className="text-slate-500 font-medium block">Skor Jumlah Inovasi</span>
-              <span className="text-base font-bold text-slate-900">{p.skor_jumlah_inovasi} / 76</span>
+              <span className="text-base font-bold text-slate-900">{p.skor_jumlah_inovasi} / {p.skor_jumlah_inovasi_maks}</span>
             </div>
           </div>
 
@@ -172,59 +175,89 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Critical Criteria Warning Box */}
         <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-sm border border-slate-800 flex flex-col justify-between">
-          <div>
-            <h3 className="text-base font-bold text-white flex items-center space-x-2 mb-3">
-              <AlertTriangle className="w-5 h-5 text-amber-400" />
-              <span>Syarat Mutlak Lampiran I IGA</span>
-            </h3>
+          {isDaerah ? (
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center space-x-2 mb-3">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
+                <span>Syarat Mutlak Lampiran I IGA</span>
+              </h3>
 
-            {/* Urusan Yandas Status */}
-            <div className="mb-4 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-300 font-medium">Urusan Wajib Pelayanan Dasar</span>
-                <span className={`font-bold ${p.yandas_kurang === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {p.yandas_terpenuhi} dari {totalYandas} Terpenuhi
+              {/* Urusan Yandas Status */}
+              <div className="mb-4 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-300 font-medium">Urusan Wajib Pelayanan Dasar</span>
+                  <span className={`font-bold ${p.yandas_kurang === 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {p.yandas_terpenuhi} dari {totalYandas} Terpenuhi
+                  </span>
+                </div>
+
+                {(p.yandas_kurang ?? 0) > 0 ? (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-200">
+                    <p className="font-semibold text-amber-300 mb-1">
+                      &bull; Kurang {p.yandas_kurang} Urusan Pelayanan Dasar!
+                    </p>
+                    <p className="text-[11px] text-slate-300">
+                      Bila &lt; {minYandas} urusan wajib, seluruh <b>{p.skor_jumlah_inovasi_maks} poin</b> skor Jumlah Inovasi menjadi NOL.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300 flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>Sebaran {totalYandas} urusan wajib pelayanan dasar telah terpenuhi sempurna!</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Urusan Yandas Checklist */}
+              <div className="space-y-1.5 text-xs">
+                <span className="text-slate-400 font-semibold block text-[11px] uppercase tracking-wider">
+                  Checklist {totalYandas} Urusan Yandas:
                 </span>
-              </div>
-
-              {p.yandas_kurang > 0 ? (
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-200">
-                  <p className="font-semibold text-amber-300 mb-1">
-                    &bull; Kurang {p.yandas_kurang} Urusan Pelayanan Dasar!
-                  </p>
-                  <p className="text-[11px] text-slate-300">
-                    Bila &lt; {minYandas} urusan wajib, seluruh <b>76 poin (30.4%)</b> skor Jumlah Inovasi menjadi NOL.
-                  </p>
+                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                  {p.yandas_terisi.map((u) => (
+                    <div key={u} className="flex items-center space-x-1.5 text-emerald-300">
+                      <Check className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                      <span className="truncate">{u}</span>
+                    </div>
+                  ))}
+                  {p.yandas_kosong.map((u) => (
+                    <div key={u} className="flex items-center space-x-1.5 text-slate-500 line-through">
+                      <XCircle className="w-3.5 h-3.5 shrink-0 text-slate-600" />
+                      <span className="truncate">{u}</span>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-300 flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Sebaran {totalYandas} urusan wajib pelayanan dasar telah terpenuhi sempurna!</span>
-                </div>
-              )}
-            </div>
-
-            {/* Urusan Yandas Checklist */}
-            <div className="space-y-1.5 text-xs">
-              <span className="text-slate-400 font-semibold block text-[11px] uppercase tracking-wider">
-                Checklist {totalYandas} Urusan Yandas:
-              </span>
-              <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                {p.yandas_terisi.map((u) => (
-                  <div key={u} className="flex items-center space-x-1.5 text-emerald-300">
-                    <Check className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-                    <span className="truncate">{u}</span>
-                  </div>
-                ))}
-                {p.yandas_kosong.map((u) => (
-                  <div key={u} className="flex items-center space-x-1.5 text-slate-500 line-through">
-                    <XCircle className="w-3.5 h-3.5 shrink-0 text-slate-600" />
-                    <span className="truncate">{u}</span>
-                  </div>
-                ))}
               </div>
             </div>
-          </div>
+          ) : (
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center space-x-2 mb-3">
+                <AlertTriangle className="w-5 h-5 text-amber-400" />
+                <span>Rumus Indeks Perangkat Daerah</span>
+              </h3>
+              <div className="space-y-2 text-xs text-slate-300">
+                <p>
+                  Akun Perangkat Daerah tidak mengisi instrumen SPD dan tidak dibebani
+                  syarat sebaran urusan wajib pelayanan dasar -- keduanya hanya dihitung
+                  di level daerah oleh Admin/Verifikator.
+                </p>
+                <div className="p-2.5 bg-slate-800/60 border border-slate-700 rounded-xl text-[11px] space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span>Pembagi minimal</span>
+                    <span className="font-bold text-white">{p.pembagi < 3 ? 3 : p.pembagi} inovasi</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Skor jumlah inovasi maks.</span>
+                    <span className="font-bold text-white">{p.skor_jumlah_inovasi_maks}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Skor total maks.</span>
+                    <span className="font-bold text-white">{p.skor_total_maks}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="pt-4 border-t border-slate-800 mt-4 flex items-center justify-between text-xs text-slate-400">
             <span>Slot Pembagi Kosong:</span>
