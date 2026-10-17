@@ -14,7 +14,7 @@ frontend/node_modules/
 frontend/dist/
 
 # Databases
-*.backup
+*.bak
 
 # Editor / OS
 .DS_Store
