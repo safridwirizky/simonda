@@ -9,10 +9,20 @@ import tailwindcss from '@tailwindcss/vite';
 // .env.local bila backend berjalan di host/port lain.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const djangoUrl = env.VITE_API_URL || 'http://127.0.0.1:8000';
+  
+  // Fallback to localhost if VITE_API_URL isn't defined locally
+  const djangoUrl = env.VITE_API_URL || 'http://localhost:8000';
 
   return {
     plugins: [react(), tailwindcss()],
+    
+    // Used by Cloudflare Pages during production build (ignored locally)
+    build: {
+      outDir: 'dist',
+      emptyOutDir: true,
+    },
+    
+    // Used by local dev server / Docker (ignored in production)
     server: {
       host: '0.0.0.0',
       port: 5173,

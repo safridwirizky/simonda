@@ -20,5 +20,14 @@ frontend/dist/
 .DS_Store
 *.swp
 
+# Backup files
+*.bak
+
 # Documents
 *.docx
+
+# Docker files
+docker-compose.yml
+.dockerignore
+Dockerfile
+nginx.conf

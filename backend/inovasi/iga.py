@@ -233,7 +233,7 @@ def skor_baris(bobot, pilihan: int) -> Decimal:
 
 
 def skor_jumlah_inovasi(n: int, urusan_yandas_terpenuhi: int) -> Decimal:
-    """Nol bila urusan wajib pelayanan dasar yang dikirim kurang dari 5.
+    """Nol bila urusan wajib pelayanan dasar yang dikirim kurang dari 6.
 
     Ini pasal yang paling mahal: kehilangan seluruh 76 poin, atau 30,4% dari
     skor maksimum, hanya karena sebaran urusan tidak terpenuhi.
