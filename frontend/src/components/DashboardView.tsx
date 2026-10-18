@@ -241,6 +241,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   syarat sebaran urusan wajib pelayanan dasar -- keduanya hanya dihitung
                   di level daerah oleh Admin/Verifikator.
                 </p>
+                <p className="text-amber-300">
+                  Hanya inovasi tahap <b>Penerapan</b> yang ikut dihitung ({p.jumlah_inovasi} inovasi) --
+                  inovasi yang masih Inisiatif atau Uji Coba belum masuk proyeksi ini.
+                </p>
                 <div className="p-2.5 bg-slate-800/60 border border-slate-700 rounded-xl text-[11px] space-y-1">
                   <div className="flex items-center justify-between">
                     <span>Pembagi minimal</span>

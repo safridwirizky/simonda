@@ -563,16 +563,20 @@ def proyeksi(periode, daftar, terverifikasi: bool, user) -> dict:
     (lihat inovasi_terlihat) sudah terbatas pada inovasi milik OPD-nya
     sendiri, sehingga memakai rumus khusus Perangkat Daerah: tanpa SPD dan
     tanpa syarat urusan wajib pelayanan dasar (lihat iga.hitung_indeks_pd).
+    IIPD juga hanya menghitung inovasi yang sudah di tahap Penerapan --
+    inovasi yang masih Inisiatif atau Uji Coba belum ikut dihitung.
     """
     dipakai = [i for i in daftar if i.layak] if terverifikasi else list(daftar)
-    skor = [i.skor_terverifikasi if terverifikasi else i.skor_klaim for i in dipakai]
     if user.bisa_verifikasi:
+        skor = [i.skor_terverifikasi if terverifikasi else i.skor_klaim for i in dipakai]
         terisi = urusan_yandas_terisi(dipakai)
         hasil = iga.hitung_indeks(hitung_skor_spd(periode), skor, len(terisi))
         hasil["skor_spd_maks"] = iga.MAKS_SPD
         hasil["yandas_terisi"] = terisi
         hasil["yandas_kosong"] = [u for u in iga.URUSAN_YANDAS if u not in terisi]
     else:
+        dipakai_pd = [i for i in dipakai if i.tahapan == Inovasi.PENERAPAN]
+        skor = [i.skor_terverifikasi if terverifikasi else i.skor_klaim for i in dipakai_pd]
         hasil = iga.hitung_indeks_pd(skor)
         hasil["skor_spd_maks"] = None
         hasil["yandas_terisi"] = []

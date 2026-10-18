@@ -168,7 +168,8 @@ class Inovasi(models.Model):
     DRAFT, DIAJUKAN, REVISI, TERVERIFIKASI = "draft", "diajukan", "revisi", "terverifikasi"
     STATUS = [(DRAFT, "Draft"), (DIAJUKAN, "Menunggu verifikasi"),
               (REVISI, "Perlu revisi"), (TERVERIFIKASI, "Terverifikasi")]
-    TAHAPAN = [("inisiatif", "Inisiatif"), ("uji_coba", "Uji Coba"), ("penerapan", "Penerapan")]
+    INISIATIF, UJI_COBA, PENERAPAN = "inisiatif", "uji_coba", "penerapan"
+    TAHAPAN = [(INISIATIF, "Inisiatif"), (UJI_COBA, "Uji Coba"), (PENERAPAN, "Penerapan")]
     JENIS = [("digital", "Digital"), ("non_digital", "Non-Digital")]
     BENTUK = [("tata_kelola", "Inovasi Tata Kelola Pemerintahan Daerah"),
               ("pelayanan_publik", "Inovasi Pelayanan Publik"),
