@@ -244,22 +244,35 @@ class HitunganOut(Schema):
 
 
 class ProyeksiOut(Schema):
-    """Proyeksi Indeks Inovasi Daerah memakai rumus Lampiran I butir XI.B."""
+    """Proyeksi indeks inovasi.
+
+    mode "daerah": akun Admin/Verifikator, rumus Lampiran I butir XI.B penuh
+    (termasuk SPD dan syarat sebaran urusan wajib pelayanan dasar) atas
+    seluruh inovasi daerah.
+
+    mode "perangkat_daerah": akun operator OPD, rumus khusus Perangkat
+    Daerah -- tanpa SPD dan tanpa syarat urusan wajib pelayanan dasar.
+    Field skor_spd, skor_spd_maks, yandas_terpenuhi dan yandas_kurang tidak
+    berlaku dan bernilai None; yandas_terisi/yandas_kosong kosong.
+    """
+    mode: str
     jumlah_inovasi: int
     pembagi: int
     kursi_kosong: int
-    skor_spd: float
-    skor_spd_maks: float
+    skor_spd: Optional[float] = None
+    skor_spd_maks: Optional[float] = None
     rata_kematangan: float
     skor_jumlah_inovasi: float
+    skor_jumlah_inovasi_maks: float
     skor_sid: float
     skor_total: float
+    skor_total_maks: float
     indeks: float
     kategori: str
-    yandas_terpenuhi: int
-    yandas_kurang: int
-    yandas_terisi: List[str]
-    yandas_kosong: List[str]
+    yandas_terpenuhi: Optional[int] = None
+    yandas_kurang: Optional[int] = None
+    yandas_terisi: List[str] = []
+    yandas_kosong: List[str] = []
 
 
 class RingkasanOut(Schema):

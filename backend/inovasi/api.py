@@ -551,16 +551,36 @@ def urusan_yandas_terisi(daftar) -> list:
     return [u for u in iga.URUSAN_YANDAS if u.lower() in dipakai]
 
 
-def proyeksi(periode, daftar, terverifikasi: bool) -> dict:
+def proyeksi(periode, daftar, terverifikasi: bool, user) -> dict:
     """Proyeksi indeks. Bila terverifikasi, hanya nilai yang sudah disetujui
-    verifikator dan inovasi yang lolos syarat kelayakan yang dihitung."""
+    verifikator dan inovasi yang lolos syarat kelayakan yang dihitung.
+
+    Akun Admin/Verifikator (user.bisa_verifikasi) melihat proyeksi penuh
+    Lampiran I -- termasuk SPD daerah dan syarat sebaran urusan wajib
+    pelayanan dasar -- atas seluruh inovasi yang terlihat baginya.
+
+    Akun Perangkat Daerah (operator OPD) tidak mengisi SPD dan daftarnya
+    (lihat inovasi_terlihat) sudah terbatas pada inovasi milik OPD-nya
+    sendiri, sehingga memakai rumus khusus Perangkat Daerah: tanpa SPD dan
+    tanpa syarat urusan wajib pelayanan dasar (lihat iga.hitung_indeks_pd).
+    IIPD juga hanya menghitung inovasi yang sudah di tahap Penerapan --
+    inovasi yang masih Inisiatif atau Uji Coba belum ikut dihitung.
+    """
     dipakai = [i for i in daftar if i.layak] if terverifikasi else list(daftar)
-    skor = [i.skor_terverifikasi if terverifikasi else i.skor_klaim for i in dipakai]
-    terisi = urusan_yandas_terisi(dipakai)
-    hasil = iga.hitung_indeks(hitung_skor_spd(periode), skor, len(terisi))
-    hasil["skor_spd_maks"] = iga.MAKS_SPD
-    hasil["yandas_terisi"] = terisi
-    hasil["yandas_kosong"] = [u for u in iga.URUSAN_YANDAS if u not in terisi]
+    if user.bisa_verifikasi:
+        skor = [i.skor_terverifikasi if terverifikasi else i.skor_klaim for i in dipakai]
+        terisi = urusan_yandas_terisi(dipakai)
+        hasil = iga.hitung_indeks(hitung_skor_spd(periode), skor, len(terisi))
+        hasil["skor_spd_maks"] = iga.MAKS_SPD
+        hasil["yandas_terisi"] = terisi
+        hasil["yandas_kosong"] = [u for u in iga.URUSAN_YANDAS if u not in terisi]
+    else:
+        dipakai_pd = [i for i in dipakai if i.tahapan == Inovasi.PENERAPAN]
+        skor = [i.skor_terverifikasi if terverifikasi else i.skor_klaim for i in dipakai_pd]
+        hasil = iga.hitung_indeks_pd(skor)
+        hasil["skor_spd_maks"] = None
+        hasil["yandas_terisi"] = []
+        hasil["yandas_kosong"] = []
     return hasil
 
 
@@ -582,8 +602,8 @@ def ringkasan(request):
         "opd_terlibat": len({i.opd_id for i in qs}),
         "opd_belum_lapor": OPD.objects.filter(aktif=True).exclude(
             id__in={i.opd_id for i in qs}).count(),
-        "proyeksi_klaim": proyeksi(p, qs, False),
-        "proyeksi_terverifikasi": proyeksi(p, qs, True),
+        "proyeksi_klaim": proyeksi(p, qs, False, request.user),
+        "proyeksi_terverifikasi": proyeksi(p, qs, True, request.user),
         "per_tahapan": hitung("tahapan", Inovasi.TAHAPAN),
         "per_bentuk": hitung("bentuk", Inovasi.BENTUK),
     }

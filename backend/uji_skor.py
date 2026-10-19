@@ -94,6 +94,41 @@ cek("tambahan di bawah 14 lebih besar dampaknya", naik_ke_9 > naik_ke_21,
 print(f"       inovasi ke-9  : +{naik_ke_9} poin indeks")
 print(f"       inovasi ke-21 : +{naik_ke_21} poin indeks")
 
+print("\n== Perangkat Daerah: skor maksimum ==")
+maks_jml_pd = iga.skor_jumlah_inovasi_pd(200)
+cek("skor jumlah inovasi PD maksimum 40", maks_jml_pd == iga.MAKS_JUMLAH_INOVASI_PD, maks_jml_pd)
+cek("batas inovasi PD = 5", iga.BATAS_INOVASI_PD == 5)
+cek("bobot jumlah inovasi PD = 8", iga.BOBOT_JUMLAH_INOVASI_PD == Decimal("8"))
+cek("total maksimum PD 151", maks_sid + maks_jml_pd == iga.MAKS_TOTAL_PD, maks_sid + maks_jml_pd)
+
+print("\n== Perangkat Daerah: tanpa SPD dan tanpa syarat yandas ==")
+sempurna_pd = iga.hitung_indeks_pd([maks_sid] * 5)
+cek("indeks 100,00 tanpa SPD", sempurna_pd["indeks"] == Decimal("100.00"), sempurna_pd["indeks"])
+cek("skor_spd kosong (None)", sempurna_pd["skor_spd"] is None)
+cek("mode perangkat_daerah", sempurna_pd["mode"] == "perangkat_daerah")
+
+sedikit_pd = iga.hitung_indeks_pd([70])
+cek("1 inovasi tetap menghasilkan skor (tanpa syarat yandas)",
+    sedikit_pd["skor_jumlah_inovasi"] > 0, sedikit_pd["skor_jumlah_inovasi"])
+
+print("\n== Perangkat Daerah: pembagi MAX(3, n) ==")
+dua_pd = iga.hitung_indeks_pd([80, 80])
+tiga_pd = iga.hitung_indeks_pd([80, 80, 80])
+cek("2 inovasi tetap dibagi 3", dua_pd["pembagi"] == 3, dua_pd["pembagi"])
+cek("4 inovasi dibagi 4", iga.hitung_indeks_pd([80, 80, 80, 80])["pembagi"] == 4)
+cek("1 kursi kosong terdeteksi (2 dari 3)", dua_pd["kursi_kosong"] == 1, dua_pd["kursi_kosong"])
+cek("3 inovasi lebih tinggi dari 2", tiga_pd["indeks"] > dua_pd["indeks"])
+print(f"       2 inovasi bermutu 80: {dua_pd['indeks']}")
+print(f"       3 inovasi bermutu 80: {tiga_pd['indeks']}")
+
+print("\n== Perangkat Daerah: skor jumlah inovasi berhenti di 5 inovasi ==")
+lima_pd = iga.hitung_indeks_pd([50] * 5)
+enam_pd = iga.hitung_indeks_pd([50] * 6)
+cek("5 inovasi: skor jumlah inovasi 40 (5 x 8)", lima_pd["skor_jumlah_inovasi"] == Decimal("40"),
+    lima_pd["skor_jumlah_inovasi"])
+cek("6 inovasi: skor jumlah inovasi tetap 40 (dibatasi 5)",
+    enam_pd["skor_jumlah_inovasi"] == Decimal("40"), enam_pd["skor_jumlah_inovasi"])
+
 print("\n== Ambang kategori ==")
 cek("65,01 Sangat Inovatif", iga.kategori("65.01") == "Sangat Inovatif")
 cek("65,00 Inovatif", iga.kategori("65.00") == "Inovatif")
