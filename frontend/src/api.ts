@@ -460,3 +460,38 @@ export async function exportIgaCsv(): Promise<void> {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+// Ekspor baris-baris inovasi yang sedang terlihat/terfilter di tab Inovasi
+// Daerah (termasuk draft, dari semua OPD yang boleh dilihat pengguna).
+async function unduhDariEkspor(endpoint: string, ids: number[], pesanGagal: string, namaBerkas: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/${endpoint}`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error(await extractError(res, pesanGagal));
+
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="?([^"]+)"?/);
+  const filename = match ? match[1] : namaBerkas;
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export async function exportInovasiTerfilterCsv(ids: number[]): Promise<void> {
+  await unduhDariEkspor('inovasi/ekspor', ids, 'Gagal mengekspor data ke CSV', 'inovasi-daerah.csv');
+}
+
+// Rekap Word (.docx) berisi Rancang Bangun, Tujuan, Manfaat, dan Dampak/Hasil
+// untuk inovasi yang sedang terlihat/difilter di tab Inovasi Daerah.
+export async function exportInovasiRekapDocx(ids: number[]): Promise<void> {
+  await unduhDariEkspor('inovasi/ekspor-rekap', ids, 'Gagal mengekspor rekap ke Word', 'rekap-inovasi-daerah.docx');
+}

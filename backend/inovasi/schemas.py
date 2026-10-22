@@ -236,6 +236,10 @@ class VerifikasiInovasiIn(Schema):
     catatan: str = ""
 
 
+class EksporInovasiIn(Schema):
+    ids: List[int]
+
+
 # ----------------------------- statistik ----------------------------
 
 class HitunganOut(Schema):

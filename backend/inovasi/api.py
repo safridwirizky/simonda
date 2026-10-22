@@ -1,4 +1,5 @@
 import csv
+import io
 from datetime import date, datetime, timedelta, timezone as dt_timezone
 from typing import List, Optional
 
@@ -12,6 +13,9 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from decimal import Decimal
+from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt, RGBColor
 
 from ninja import File, NinjaAPI
 from ninja.errors import HttpError
@@ -22,9 +26,9 @@ from . import iga
 from .models import (OPD, BerkasSID, BerkasSPD, Indikator, Inovasi, LogAktivitas, NilaiSID,
                      NilaiSPD, Periode, User)
 from .schemas import (
-    AkunOPDIn, AkunOPDOut, BuktiIn, BuktiOut, HitunganOut, IndikatorOut, InovasiDetail,
-    InovasiIn, InovasiRingkas, MasukIn, NilaiSPDIn, NilaiSPDOut, OPDRingkas, PeriodeOut,
-    PesanOut, ProfilOut, RekapOPDOut, ResetSandiIn, RingkasanOut, TokenOut,
+    AkunOPDIn, AkunOPDOut, BuktiIn, BuktiOut, EksporInovasiIn, HitunganOut, IndikatorOut,
+    InovasiDetail, InovasiIn, InovasiRingkas, MasukIn, NilaiSPDIn, NilaiSPDOut, OPDRingkas,
+    PeriodeOut, PesanOut, ProfilOut, RekapOPDOut, ResetSandiIn, RingkasanOut, TokenOut,
     VerifikasiBuktiIn, VerifikasiInovasiIn,
 )
 
@@ -326,6 +330,118 @@ def buat_inovasi(request, data: InovasiIn):
     inv = Inovasi.objects.create(periode=periode_aktif(), opd_id=opd_id, dibuat_oleh=user, **isi)
     LogAktivitas.catat(user, "buat inovasi", inv.id, inv.nama)
     return 201, detail(inv, user)
+
+
+STATUS_LABEL = dict(Inovasi.STATUS)
+KLASIFIKASI_KEMATANGAN_LABEL = dict((k, l) for k, l, _b, _a in iga.KLASIFIKASI_KEMATANGAN)
+
+
+def _daftar_terfilter(user, ids: List[int]) -> List[Inovasi]:
+    """Ambil inovasi sesuai id yang dikirim klien (daftar yang sedang terlihat
+    setelah difilter di tab Inovasi Daerah), dibatasi pada cakupan
+    inovasi_terlihat(user) dan menjaga urutan `ids`."""
+    if not ids:
+        raise HttpError(400, "Tidak ada inovasi untuk diekspor.")
+    terlihat = {i.id: i for i in inovasi_terlihat(user).filter(id__in=ids)}
+    return [terlihat[i] for i in ids if i in terlihat]
+
+
+@api.post("/inovasi/ekspor")
+def ekspor_inovasi_terfilter(request, data: EksporInovasiIn):
+    """CSV dari daftar inovasi yang sedang ditampilkan/difilter di tab Inovasi
+    Daerah (klien mengirim id-id baris yang terlihat setelah difilter).
+    Dibatasi pada inovasi yang memang boleh dilihat pengguna (inovasi_terlihat)
+    agar operator OPD tidak bisa menarik data OPD lain lewat endpoint ini.
+
+    PENTING: didaftarkan SEBELUM rute "/inovasi/{inovasi_id}" di bawah ini.
+    Django Ninja memetakan "{inovasi_id}" ke pencocok path generik tanpa
+    batasan tipe, sehingga ia juga cocok dengan path literal "ekspor" --
+    rute mana pun yang didaftarkan lebih dulu akan menang saat ada
+    tabrakan seperti ini."""
+    daftar = _daftar_terfilter(request.user, data.ids)
+
+    resp = HttpResponse(content_type="text/csv; charset=utf-8")
+    resp["Content-Disposition"] = (
+        f'attachment; filename="inovasi-daerah-{date.today().isoformat()}.csv"'
+    )
+    resp.write("\ufeff")
+    w = csv.writer(resp)
+    w.writerow(["Nama Inovasi", "OPD", "Status", "Tahapan", "Jenis", "Bentuk", "Urusan",
+                "Klasifikasi Kematangan", "Skor Klaim", "Skor Terverifikasi", "% Terverifikasi",
+                "Layak IGA", "Rancang Bangun", "Tujuan", "Manfaat", "Dampak/Hasil"])
+    for i in daftar:
+        w.writerow([
+            i.nama, i.opd.singkatan or i.opd.nama, STATUS_LABEL.get(i.status, i.status),
+            i.get_tahapan_display(), i.get_jenis_display(), i.get_bentuk_display(), i.urusan,
+            KLASIFIKASI_KEMATANGAN_LABEL.get(i.klasifikasi_kematangan, i.klasifikasi_kematangan),
+            i.skor_klaim, i.skor_terverifikasi, i.persen_terverifikasi,
+            "Ya" if i.layak else "Tidak",
+            i.rancang_bangun, i.tujuan, i.manfaat, i.hasil,
+        ])
+    LogAktivitas.catat(request.user, "ekspor CSV terfilter", "-", f"{len(daftar)} inovasi")
+    return resp
+
+
+def _tambah_bagian(dok, judul: str, isi: str):
+    h = dok.add_paragraph()
+    jalan_judul = h.add_run(judul)
+    jalan_judul.bold = True
+    jalan_judul.font.size = Pt(11)
+    jalan_judul.font.color.rgb = RGBColor(0x1E, 0x29, 0x3B)
+    h.paragraph_format.space_before = Pt(8)
+    h.paragraph_format.space_after = Pt(2)
+
+    p = dok.add_paragraph(isi.strip() if isi and isi.strip() else "-")
+    p.paragraph_format.space_after = Pt(4)
+
+
+@api.post("/inovasi/ekspor-rekap")
+def ekspor_rekap_narasi(request, data: EksporInovasiIn):
+    """Rekap Word (.docx) berisi Rancang Bangun, Tujuan, Manfaat, dan
+    Dampak/Hasil untuk inovasi yang sedang terlihat/difilter di tab Inovasi
+    Daerah -- supaya mudah direkap/dibaca berurutan tanpa membuka tiap
+    inovasi satu per satu. Didaftarkan sebelum "/inovasi/{inovasi_id}" dengan
+    alasan yang sama seperti /inovasi/ekspor di atas."""
+    daftar = _daftar_terfilter(request.user, data.ids)
+
+    dok = Document()
+    style = dok.styles["Normal"]
+    style.font.name = "Calibri"
+    style.font.size = Pt(10.5)
+
+    judul = dok.add_heading("Rekapitulasi Rancang Bangun, Tujuan, Manfaat, dan Hasil Inovasi Daerah", level=1)
+    judul.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    sub = dok.add_paragraph(f"Diunduh {date.today().strftime('%d-%m-%Y')} \u00b7 {len(daftar)} inovasi")
+    sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    sub.runs[0].italic = True
+    sub.runs[0].font.size = Pt(9)
+
+    for idx, i in enumerate(daftar, start=1):
+        dok.add_paragraph()
+        nama = dok.add_heading(f"{idx}. {i.nama}", level=2)
+        info = dok.add_paragraph(f"{i.opd.singkatan or i.opd.nama} \u00b7 {STATUS_LABEL.get(i.status, i.status)}")
+        info.runs[0].italic = True
+        info.runs[0].font.size = Pt(9)
+        info.runs[0].font.color.rgb = RGBColor(0x64, 0x74, 0x8B)
+
+        _tambah_bagian(dok, "Rancang Bangun", i.rancang_bangun)
+        _tambah_bagian(dok, "Tujuan", i.tujuan)
+        _tambah_bagian(dok, "Manfaat", i.manfaat)
+        _tambah_bagian(dok, "Dampak/Hasil", i.hasil)
+
+    buffer = io.BytesIO()
+    dok.save(buffer)
+    buffer.seek(0)
+
+    resp = HttpResponse(
+        buffer.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+    resp["Content-Disposition"] = (
+        f'attachment; filename="rekap-inovasi-daerah-{date.today().isoformat()}.docx"'
+    )
+    LogAktivitas.catat(request.user, "ekspor rekap Word", "-", f"{len(daftar)} inovasi")
+    return resp
 
 
 @api.get("/inovasi/{inovasi_id}", response=InovasiDetail)

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { InovasiRingkas, OPD, UserProfile } from '../types';
-import { KLASIFIKASI_KEMATANGAN } from '../api';
-import { Search, Plus, Filter, AlertCircle, CheckCircle, Clock, Building2, ChevronRight, ShieldAlert } from 'lucide-react';
+import { KLASIFIKASI_KEMATANGAN, exportInovasiTerfilterCsv, exportInovasiRekapDocx } from '../api';
+import { Search, Plus, Filter, AlertCircle, CheckCircle, Clock, Building2, ChevronRight, ShieldAlert, Download, FileText, Loader2 } from 'lucide-react';
 
 interface InovasiListViewProps {
   inovasiList: InovasiRingkas[];
@@ -35,6 +35,35 @@ export const InovasiListView: React.FC<InovasiListViewProps> = ({
 
     return matchesSearch && matchesStatus && matchesTahapan && matchesOpd;
   });
+
+  const [mengekspor, setMengekspor] = useState(false);
+  const [mengekspotRekap, setMengekspotRekap] = useState(false);
+
+  // Kolom teks panjang (Rancang Bangun, Tujuan, Manfaat, Dampak/Hasil) tidak
+  // ada di payload daftar (InovasiRingkas), jadi kedua ekspor ini minta
+  // backend menyusun berkasnya dari id-id yang sedang terlihat setelah
+  // difilter.
+  const eksporCSV = async () => {
+    setMengekspor(true);
+    try {
+      await exportInovasiTerfilterCsv(filteredList.map((item) => item.id));
+    } catch (e: any) {
+      alert(e.message || 'Gagal mengekspor data ke CSV.');
+    } finally {
+      setMengekspor(false);
+    }
+  };
+
+  const eksporRekapWord = async () => {
+    setMengekspotRekap(true);
+    try {
+      await exportInovasiRekapDocx(filteredList.map((item) => item.id));
+    } catch (e: any) {
+      alert(e.message || 'Gagal mengekspor rekap ke Word.');
+    } finally {
+      setMengekspotRekap(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -80,13 +109,42 @@ export const InovasiListView: React.FC<InovasiListViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onOpenNewInovasi}
-          className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-md transition"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Buat Inovasi Baru</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={eksporCSV}
+            disabled={filteredList.length === 0 || mengekspor}
+            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold text-sm border border-slate-200 shadow-sm transition"
+          >
+            {mengekspor ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
+            <span>Ekspor CSV</span>
+          </button>
+
+          <button
+            onClick={eksporRekapWord}
+            disabled={filteredList.length === 0 || mengekspotRekap}
+            title="Ekspor Rancang Bangun, Tujuan, Manfaat, dan Dampak/Hasil ke Word"
+            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-bold text-sm border border-slate-200 shadow-sm transition"
+          >
+            {mengekspotRekap ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <FileText className="w-4 h-4" />
+            )}
+            <span>Ekspor Rekap (Word)</span>
+          </button>
+
+          <button
+            onClick={onOpenNewInovasi}
+            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-md transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Buat Inovasi Baru</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar */}
