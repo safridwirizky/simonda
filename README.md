@@ -172,6 +172,7 @@ export ALLOWED_HOSTS=localhost,127.0.0.1,testserver
 python uji_skor.py        # 32 pemeriksaan katalog dan rumus
 python uji_alur.py        # 85 pemeriksaan alur kerja
 python uji_kontrak.py     # 42 pemeriksaan kontrak API terhadap antarmuka
+python uji_rekap_docx.py   # 43 pemeriksaan rekap Word (.docx)
 ```
 
 `uji_skor.py` membuktikan ulang angka resmi pedoman dari bobot yang dimasukkan.
