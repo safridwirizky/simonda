@@ -7,9 +7,9 @@ from .models import (OPD, Indikator, Inovasi, LogAktivitas, NilaiSID, NilaiSPD,
 
 @admin.register(OPD)
 class OPDAdmin(admin.ModelAdmin):
-    list_display = ("kode", "nama", "singkatan", "aktif")
+    list_display = ("kode", "nama", "singkatan", "esa_id", "aktif")
     list_filter = ("aktif",)
-    search_fields = ("kode", "nama")
+    search_fields = ("kode", "nama", "esa_id")
 
 
 @admin.register(User)
@@ -18,6 +18,11 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ("peran", "opd", "is_active")
     fieldsets = BaseUserAdmin.fieldsets + (
         ("Data SANDO", {"fields": ("peran", "opd", "nip", "telepon")}),
+        ("Identitas Esa Office", {
+            "fields": ("identity_provider", "external_subject"),
+            "description": "Diisi otomatis saat pengguna masuk lewat Esa Office. Kosongkan kedua kolom "
+                           "hanya untuk memutus tautan akun ini ke Esa Office.",
+        }),
     )
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
         ("Data SANDO", {"fields": ("peran", "opd", "nip", "telepon")}),

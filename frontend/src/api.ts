@@ -182,13 +182,31 @@ async function extractError(res: Response, fallback: string): Promise<string> {
   }
 }
 
+// Penanda sesi dari Esa Office (SSO). Disimpan di browser ini saja.
+const KUNCI_VIA_ESA = 'simonda_via_esa';      // '1': sesi SANDO ini berasal dari login Esa Office
+const KUNCI_ULANG_ESA = 'simonda_esa_ulang';  // '1': login Esa Office berikutnya wajib minta kata sandi lagi
+
+// Menghapus sesi SANDO di browser ini. Sesi di Esa Office sendiri tetap hidup, jadi
+// bila sesi ini berasal dari Esa Office, login Esa Office berikutnya meminta kata
+// sandi lagi (prompt=login): di komputer bersama, pengguna berikutnya tidak boleh
+// langsung masuk sebagai pengguna sebelumnya.
+function hapusSesiLokal(): void {
+  try {
+    if (localStorage.getItem(KUNCI_VIA_ESA) === '1') localStorage.setItem(KUNCI_ULANG_ESA, '1');
+    localStorage.removeItem(KUNCI_VIA_ESA);
+  } catch {
+    /* penyimpanan diblokir: lewati */
+  }
+  localStorage.removeItem('simonda_token');
+}
+
 export async function fetchProfile(): Promise<UserProfile | null> {
   const token = localStorage.getItem('simonda_token');
   if (!token) return null;
   try {
     const res = await fetch(`${API_BASE}/api/auth/saya`, { headers: getHeaders() });
     if (!res.ok) {
-      localStorage.removeItem('simonda_token');
+      hapusSesiLokal();
       return null;
     }
     return await res.json();
@@ -208,6 +226,11 @@ export async function login(username: string, password: string): Promise<UserPro
   }
   const data = await res.json();
   localStorage.setItem('simonda_token', data.akses);
+  try {
+    localStorage.removeItem(KUNCI_VIA_ESA); // sesi ini lokal, bukan dari Esa Office
+  } catch {
+    /* penyimpanan diblokir: lewati */
+  }
 
   const profile = await fetchProfile();
   if (!profile) {
@@ -218,7 +241,166 @@ export async function login(username: string, password: string): Promise<UserPro
 }
 
 export async function logout(): Promise<void> {
-  localStorage.removeItem('simonda_token');
+  hapusSesiLokal();
+}
+
+// ---------------------------------------------------------------------------
+// Masuk lewat Esa Office (OpenID Connect). Seluruh alurnya terjadi di backend:
+// frontend hanya mengarahkan browser ke /api/auth/esa/mulai, lalu menukar tiket
+// sekali pakai yang dibawa kembali di fragmen alamat (#esa_tiket=...) dengan JWT
+// SANDO. Kata sandi Esa Office tidak pernah melewati SANDO, dan rahasia klien OIDC
+// hanya ada di server.
+//
+// Tiket itu hanya sah bagi browser yang memulai login. Sebelum berangkat, frontend
+// membuat `verifier` acak yang disimpan di sessionStorage tab ini saja, dan hanya
+// SHA-256-nya (tantangan) yang dikirim ke backend. Tiket baru bisa ditukar bila
+// disertai verifier-nya. Tanpa ini, orang yang punya akun Esa Office bisa mengirim
+// tautan berisi tiketnya sendiri ke korban dan membuat korban masuk sebagai dirinya.
+// ---------------------------------------------------------------------------
+
+const KUNCI_VERIFIER_ESA = 'simonda_esa_verifier'; // sessionStorage, bukan localStorage: hanya tab ini
+
+export interface OpsiMasuk {
+  esa_office: boolean;   // tombol "Masuk dengan Esa Office" ditampilkan
+  login_lokal: boolean;  // false: kata sandi lokal hanya untuk administrator
+}
+
+// Backend lama atau tak terjangkau: tampil seperti sebelum ada SSO (hanya form lokal).
+export async function fetchOpsiMasuk(): Promise<OpsiMasuk> {
+  const pembatal = new AbortController();
+  const timer = window.setTimeout(() => pembatal.abort(), 5000);
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/opsi`, { signal: pembatal.signal });
+    if (!res.ok) throw new Error(String(res.status));
+    const d = await res.json();
+    return { esa_office: d.esa_office === true, login_lokal: d.login_lokal !== false };
+  } catch {
+    return { esa_office: false, login_lokal: true };
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+function base64Url(bytes: Uint8Array): string {
+  let s = '';
+  bytes.forEach((b) => {
+    s += String.fromCharCode(b);
+  });
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Mengarahkan browser ke Esa Office lewat backend. Melempar Error (pesan siap tampil)
+// bila browser tidak bisa menyiapkan verifier: Web Crypto hanya ada di halaman https://
+// (atau localhost), dan sessionStorage bisa saja diblokir.
+export async function mulaiLoginEsa(): Promise<void> {
+  let tantangan: string;
+  try {
+    const verifier = base64Url(window.crypto.getRandomValues(new Uint8Array(32)));
+    const hash = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+    tantangan = base64Url(new Uint8Array(hash));
+    window.sessionStorage.setItem(KUNCI_VERIFIER_ESA, verifier);
+  } catch {
+    throw new Error(
+      'Browser ini tidak dapat memulai masuk lewat Esa Office. Buka SANDO lewat alamat https:// dan pastikan penyimpanan sesi browser tidak diblokir.',
+    );
+  }
+
+  let ulang = false;
+  try {
+    ulang = localStorage.getItem(KUNCI_ULANG_ESA) === '1';
+  } catch {
+    /* penyimpanan diblokir: lewati */
+  }
+  const q = new URLSearchParams({ tantangan });
+  if (ulang) q.set('ulang', '1');
+  window.location.assign(`${API_BASE}/api/auth/esa/mulai?${q.toString()}`);
+}
+
+// Backend hanya mengirim kode galat yang tetap; teks yang tampil ditentukan di sini,
+// sehingga isi alamat (yang bisa dibuat siapa saja) tidak pernah tampil sebagai pesan.
+const PESAN_GALAT_ESA: Record<string, string> = {
+  dibatalkan: 'Masuk dibatalkan.',
+  kedaluwarsa: 'Sesi masuk kedaluwarsa atau tidak cocok. Mulai lagi dari tombol Masuk dengan Esa Office.',
+  tidak_tersedia:
+    'Esa Office sedang tidak dapat dihubungi atau belum dikonfigurasi dengan benar. Coba lagi sebentar lagi; bila berulang, hubungi administrator.',
+  opd_tidak_dikenal: 'Perangkat daerah Anda di Esa Office belum terdaftar di SANDO. Hubungi administrator.',
+  akun_nonaktif: 'Akun Anda dinonaktifkan di SANDO. Hubungi administrator.',
+  belum_ditautkan:
+    'Akun verifikator/admin dengan NIP ini dibuat di SANDO dengan kata sandi lokal dan belum ditautkan ke Esa Office. Hubungi administrator.',
+  identitas_tidak_lengkap: 'Data akun Esa Office Anda belum lengkap (nama atau perangkat daerah). Hubungi administrator.',
+  akun_ganda: 'Ditemukan lebih dari satu akun SANDO untuk identitas ini. Hubungi administrator.',
+  tiket: 'Tiket masuk tidak valid atau sudah kedaluwarsa. Ulangi masuk dengan Esa Office.',
+  gagal: 'Masuk lewat Esa Office gagal. Coba lagi.',
+};
+
+export function pesanGalatEsa(kode: string): string {
+  return Object.prototype.hasOwnProperty.call(PESAN_GALAT_ESA, kode) ? PESAN_GALAT_ESA[kode] : PESAN_GALAT_ESA.gagal;
+}
+
+export type HasilEsa = { tiket: string } | { galat: string } | null;
+
+// Setelah login di Esa Office, backend mengalihkan browser ke frontend dengan #esa_tiket=...
+// atau #esa_galat=.... Dibaca SEKALI saat modul dimuat, lalu fragmen langsung dibuang dari
+// bilah alamat dan riwayat (tiket tidak boleh tertinggal di sana). Membaca sekali juga
+// mencegah tiket dipakai dua kali oleh React StrictMode, yang menjalankan efek dua kali.
+function bacaFragmenEsa(): HasilEsa {
+  try {
+    const p = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const tiket = p.get('esa_tiket');
+    const galat = p.get('esa_galat');
+    if (!tiket && !galat) return null;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    if (tiket) return { tiket };
+    try {
+      window.sessionStorage.removeItem(KUNCI_VERIFIER_ESA); // login gagal: verifier-nya tak terpakai lagi
+    } catch {
+      /* penyimpanan diblokir: lewati */
+    }
+    return { galat: galat as string };
+  } catch {
+    return null;
+  }
+}
+
+export const hasilEsaAwal: HasilEsa = bacaFragmenEsa();
+
+// Menukar tiket sekali pakai (berlaku semenit) dengan JWT SANDO, hasilnya sama dengan login lokal.
+export async function selesaikanLoginEsa(tiket: string): Promise<UserProfile> {
+  // Verifier hanya ada di tab yang memulai login dan hanya dipakai sekali. Tanpanya,
+  // tiket ini bukan hasil login yang dimulai di sini (mis. tautan kiriman orang lain),
+  // jadi tidak perlu dikirim ke server sama sekali.
+  let verifier: string | null = null;
+  try {
+    verifier = window.sessionStorage.getItem(KUNCI_VERIFIER_ESA);
+    window.sessionStorage.removeItem(KUNCI_VERIFIER_ESA);
+  } catch {
+    /* penyimpanan diblokir: verifier tetap null */
+  }
+  if (!verifier) throw new Error(PESAN_GALAT_ESA.tiket);
+
+  const res = await fetch(`${API_BASE}/api/auth/esa/tukar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tiket, verifier }),
+  });
+  if (!res.ok) {
+    throw new Error(await extractError(res, PESAN_GALAT_ESA.tiket));
+  }
+  const data = await res.json();
+  localStorage.setItem('simonda_token', data.akses);
+  try {
+    localStorage.setItem(KUNCI_VIA_ESA, '1');
+    localStorage.removeItem(KUNCI_ULANG_ESA); // sudah login ulang di Esa Office; tidak perlu memaksa lagi
+  } catch {
+    /* penyimpanan diblokir: lewati */
+  }
+
+  const profile = await fetchProfile();
+  if (!profile) {
+    hapusSesiLokal();
+    throw new Error('Gagal memuat profil setelah masuk.');
+  }
+  return profile;
 }
 
 export async function fetchRingkasan(): Promise<RingkasanStatistik> {

@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from decimal import Decimal
@@ -18,15 +18,15 @@ from ninja.errors import HttpError
 from ninja.files import UploadedFile
 from ninja.security import HttpBearer
 
-from . import iga
+from . import esa_office, iga
 from .models import (OPD, BerkasSID, BerkasSPD, Indikator, Inovasi, LogAktivitas, NilaiSID,
                      NilaiSPD, Periode, User)
 from .rekap_docx import ItemRekap, buat_rekap_docx
 from .schemas import (
     AkunOPDIn, AkunOPDOut, BuktiIn, BuktiOut, EksporInovasiIn, HitunganOut, IndikatorOut,
     InovasiDetail, InovasiIn, InovasiRingkas, MasukIn, NilaiSPDIn, NilaiSPDOut, OPDRingkas,
-    PeriodeOut, PesanOut, ProfilOut, RekapOPDOut, ResetSandiIn, RingkasanOut, TokenOut,
-    VerifikasiBuktiIn, VerifikasiInovasiIn,
+    OpsiMasukOut, PeriodeOut, PesanOut, ProfilOut, RekapOPDOut, ResetSandiIn, RingkasanOut,
+    TiketIn, TokenOut, VerifikasiBuktiIn, VerifikasiInovasiIn,
 )
 
 MASA_TOKEN = timedelta(hours=12)
@@ -107,10 +107,76 @@ def pastikan_boleh_ubah(user: User, inv: Inovasi):
 @api.post("/auth/masuk", auth=None, response=TokenOut)
 def masuk(request, data: MasukIn):
     user = authenticate(username=data.username, password=data.password)
-    if not user or not user.is_active:
-        raise HttpError(401, "Nama pengguna atau kata sandi salah.")
+    if not user or not user.is_active or not esa_office.boleh_login_lokal(user):
+        # Pesan sama persis untuk "sandi salah" dan "akun ini wajib lewat Esa Office",
+        # supaya tebakan sandi tidak bisa dipastikan benar dari balasan ini.
+        raise HttpError(401, "Nama pengguna atau kata sandi salah."
+                        + (" Pegawai masuk lewat tombol “Masuk dengan Esa Office”."
+                           if esa_office.login_lokal_dibatasi() else ""))
     token, kedaluwarsa = buat_token(user)
     LogAktivitas.catat(user, "masuk")
+    return {"akses": token, "kedaluwarsa": kedaluwarsa}
+
+
+# ------------------------- masuk lewat Esa Office -------------------------
+# Seluruh alur ada di inovasi/esa_office.py; endpoint di sini hanya jembatan
+# HTTP. /auth/esa/mulai dan /auth/esa/callback adalah navigasi browser (bukan
+# panggilan XHR), jadi balasannya pengalihan, dan galat dikirim ke frontend
+# sebagai kode tetap di fragmen URL (#esa_galat=...), bukan sebagai teks bebas.
+
+@api.get("/auth/opsi", auth=None, response=OpsiMasukOut)
+def opsi_masuk(request):
+    return {"esa_office": esa_office.aktif(), "login_lokal": not esa_office.login_lokal_dibatasi()}
+
+
+def _alihkan(url: str) -> HttpResponse:
+    resp = HttpResponseRedirect(url)
+    resp["Cache-Control"] = "no-store"
+    resp["Referrer-Policy"] = "no-referrer"  # alamat callback memuat kode otorisasi
+    return resp
+
+
+def _ke_frontend(**fragmen) -> HttpResponse:
+    try:
+        return _alihkan(esa_office.url_frontend(**fragmen))
+    except esa_office.EsaOfficeError as e:
+        esa_office.laporkan(e)
+        return HttpResponse("Masuk lewat Esa Office belum dikonfigurasi. Hubungi administrator.",
+                            status=503, content_type="text/plain; charset=utf-8")
+
+
+@api.get("/auth/esa/mulai", auth=None, include_in_schema=False)
+def esa_mulai(request, ulang: int = 0, tantangan: str = ""):
+    if not esa_office.aktif():
+        raise HttpError(404, "Masuk lewat Esa Office tidak diaktifkan.")
+    try:
+        url, cookie = esa_office.mulai_login(paksa_login=bool(ulang), tantangan=tantangan)
+    except Exception as e:  # noqa: BLE001 -- navigasi browser: jangan tampilkan halaman galat server
+        return _ke_frontend(esa_galat=esa_office.laporkan(e))
+    resp = _alihkan(url)
+    esa_office.pasang_cookie(resp, cookie)
+    return resp
+
+
+@api.get("/auth/esa/callback", auth=None, include_in_schema=False)
+def esa_callback(request, code: str = "", state: str = "", error: str = ""):
+    try:
+        tiket = esa_office.selesai_login(code=code, state=state, galat=error,
+                                         cookie=request.COOKIES.get(esa_office.NAMA_COOKIE))
+        resp = _ke_frontend(esa_tiket=tiket)
+    except Exception as e:  # noqa: BLE001
+        resp = _ke_frontend(esa_galat=esa_office.laporkan(e))
+    esa_office.hapus_cookie(resp)  # sekali pakai, berhasil atau tidak
+    return resp
+
+
+@api.post("/auth/esa/tukar", auth=None, response=TokenOut)
+def esa_tukar(request, data: TiketIn):
+    user = esa_office.tukar_tiket(data.tiket, data.verifier)
+    if user is None:
+        raise HttpError(esa_office.TiketTidakValid.status, esa_office.TiketTidakValid.pesan)
+    token, kedaluwarsa = buat_token(user)
+    LogAktivitas.catat(user, "masuk", "-", "via Esa Office")
     return {"akses": token, "kedaluwarsa": kedaluwarsa}
 
 
@@ -155,6 +221,12 @@ def akun_ringkas(u: User) -> dict:
     }
 
 
+def wajib_akun_lokal():
+    """Kata sandi lokal operator tidak berguna bila login lokal dibatasi untuk administrator."""
+    if esa_office.login_lokal_dibatasi():
+        raise HttpError(409, "Akun operator dikelola lewat Esa Office; kata sandi lokal tidak dipakai untuk masuk.")
+
+
 def validasi_sandi(password: str, user: Optional[User] = None):
     try:
         validate_password(password, user=user)
@@ -173,6 +245,7 @@ def daftar_akun_opd(request):
 @api.post("/akun-opd", response={201: AkunOPDOut})
 def buat_akun_opd(request, data: AkunOPDIn):
     wajib_verifikator(request)
+    wajib_akun_lokal()
     opd = get_object_or_404(OPD, id=data.opd_id, aktif=True)
     if User.objects.filter(username=data.username).exists():
         raise HttpError(400, "Username sudah dipakai.")
@@ -208,6 +281,7 @@ def aktifkan_akun_opd(request, user_id: int):
 @api.post("/akun-opd/{user_id}/reset-sandi", response=PesanOut)
 def reset_sandi_akun_opd(request, user_id: int, data: ResetSandiIn):
     wajib_verifikator(request)
+    wajib_akun_lokal()
     user = get_object_or_404(User, id=user_id, peran=User.OPERATOR)
     validasi_sandi(data.password, user=user)
     user.set_password(data.password)

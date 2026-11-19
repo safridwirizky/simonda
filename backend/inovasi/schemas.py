@@ -16,6 +16,16 @@ class TokenOut(Schema):
     kedaluwarsa: datetime
 
 
+class OpsiMasukOut(Schema):
+    esa_office: bool      # tombol "Masuk dengan Esa Office" ditampilkan
+    login_lokal: bool     # False: sandi lokal hanya untuk administrator
+
+
+class TiketIn(Schema):
+    tiket: str
+    verifier: str         # rahasia acak di sessionStorage browser yang memulai login
+
+
 class OPDRingkas(Schema):
     id: int
     kode: str

@@ -14,12 +14,21 @@ class OPD(models.Model):
     kode = models.CharField(max_length=20, unique=True)
     nama = models.CharField(max_length=150)
     singkatan = models.CharField(max_length=40, blank=True)
+    esa_id = models.CharField(
+        max_length=100, blank=True, default="",
+        help_text="ID perangkat daerah ini di Esa Office (klaim perangkat_daerah.id). Kosong bila belum "
+                  "dipetakan; SANDO mengisinya sendiri saat login pertama bila namanya cocok persis "
+                  "(lihat README, bagian SSO).")
     aktif = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "OPD"
         verbose_name_plural = "OPD"
         ordering = ["nama"]
+        constraints = [
+            models.UniqueConstraint(fields=["esa_id"], condition=~models.Q(esa_id=""),
+                                    name="opd_esa_id_unik"),
+        ]
 
     def __str__(self):
         return self.nama
@@ -36,6 +45,18 @@ class User(AbstractUser):
                             related_name="pengguna")
     nip = models.CharField(max_length=25, blank=True)
     telepon = models.CharField(max_length=25, blank=True)
+    # Pemilik akun menurut penyedia login eksternal (Esa Office, OIDC) ditentukan
+    # oleh pasangan (penyedia, subject) -- bukan nama, NIP, atau nomor telepon.
+    # Kosong untuk akun yang hanya masuk dengan kata sandi lokal.
+    identity_provider = models.CharField(max_length=40, blank=True, default="")
+    external_subject = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta(AbstractUser.Meta):
+        constraints = [
+            models.UniqueConstraint(fields=["identity_provider", "external_subject"],
+                                    condition=~models.Q(external_subject=""),
+                                    name="user_identitas_eksternal_unik"),
+        ]
 
     @property
     def bisa_verifikasi(self) -> bool:
@@ -436,3 +457,23 @@ class LogAktivitas(models.Model):
     @classmethod
     def catat(cls, pengguna, aksi, objek="", ringkasan=""):
         cls.objects.create(pengguna=pengguna, aksi=aksi, objek=str(objek), ringkasan=ringkasan)
+
+
+class TiketMasuk(models.Model):
+    """Tiket sekali pakai yang menukar hasil login Esa Office menjadi JWT SANDO.
+
+    Setelah Esa Office membuktikan siapa penggunanya, backend mengalihkan browser
+    ke frontend dengan tiket di fragmen URL (tidak pernah dikirim ke server atau
+    tercatat di log); frontend menukarnya sekali lewat /api/auth/esa/tukar. Yang
+    disimpan hanya SHA-256 tiket, dan masa berlakunya semenit.
+
+    ``tantangan`` mengikat tiket ke browser yang memulai login: SHA-256 dari
+    ``verifier`` acak yang hanya ada di sessionStorage browser itu. Tanpanya,
+    penyerang yang punya akun Esa Office bisa menyodorkan tiket miliknya lewat
+    tautan ke korban, dan korban masuk sebagai penyerang.
+    """
+
+    sidik = models.CharField(max_length=64, unique=True)
+    pengguna = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    tantangan = models.CharField(max_length=43)
+    kedaluwarsa = models.DateTimeField(db_index=True)

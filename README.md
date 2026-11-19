@@ -173,6 +173,7 @@ python uji_skor.py        # 32 pemeriksaan katalog dan rumus
 python uji_alur.py        # 85 pemeriksaan alur kerja
 python uji_kontrak.py     # 42 pemeriksaan kontrak API terhadap antarmuka
 python uji_rekap_docx.py   # 43 pemeriksaan rekap Word (.docx)
+python uji_esa_office.py   # SSO Esa Office (OpenID Connect) terhadap Esa Office tiruan
 ```
 
 `uji_skor.py` membuktikan ulang angka resmi pedoman dari bobot yang dimasukkan.
@@ -183,9 +184,21 @@ menonaktifkan/mengaktifkan, dan mereset sandi akun operator).
 `uji_kontrak.py` memastikan setiap kolom yang dibaca berkas `.jsx` benar-benar
 ada di respons API — inilah yang biasanya jebol saat backend diubah tetapi
 frontend belum menyusul.
+`uji_esa_office.py` menguji masuk lewat Esa Office ([SSO](#sso-dengan-esa-office))
+lewat API Django asli terhadap Esa Office tiruan (`uji_idp_palsu.py`, berjalan di
+`127.0.0.1` dan menandatangani ID token RS256/ES256 sungguhan): alur
+`/auth/esa/mulai` → `/authorize` → `/auth/esa/callback` → `/auth/esa/tukar`, cookie
+sesi dan pengikat tiket ke browser, ID token palsu/kedaluwarsa/salah `nonce`,
+aturan akun (penautan, peran, OPD, mutasi, akun nonaktif), batasan unik di basis
+data, perintah `esa_office_cek`, dan kecocokan migrasi dengan model. Ia hanya
+membuat dan menghapus data berawalan `uji_esa_`/`UJIESA` dan mengabaikan setelan
+`ESA_OFFICE_*` dari `.env`; jalankan dengan `DEBUG=1 python uji_esa_office.py`
+setelah `ALLOWED_HOSTS` di-export seperti di blok di atas (skrip menambahkan
+`testserver` sendiri).
 
-Jalankan ketiganya dengan basis data segar; `uji_alur.py` dan `uji_kontrak.py`
-menghapus seluruh inovasi saat mulai.
+Jalankan `uji_alur.py` dan `uji_kontrak.py` dengan basis data segar: keduanya
+menghapus seluruh inovasi saat mulai. `uji_esa_office.py` cukup dengan basis data
+yang sudah di-migrate dan di-seed.
 
 ## Peta antarmuka
 
@@ -196,11 +209,15 @@ menghapus seluruh inovasi saat mulai.
 | Antrean verifikasi | verifikator | Inovasi berstatus menunggu, dengan lencana jumlah |
 | Indikator daerah | verifikator | 20 baris SPD, dikelompokkan per variabel |
 | Rekap OPD | verifikator | Rata skor per OPD dan daftar yang belum melapor |
-| Kelola Akun | verifikator | Buat, nonaktifkan/aktifkan, dan reset sandi akun operator OPD |
+| Kelola Akun | verifikator | Buat, nonaktifkan/aktifkan, dan reset sandi akun operator OPD (membuat akun dan reset sandi ditolak bila `ESA_OFFICE_LOGIN_LOKAL=0`) |
 
 ---
 
 ## Membuat akun OPD
+
+> Bagian ini untuk login lokal. Bila SSO Esa Office menyala, akun operator
+> dibuat otomatis saat pegawai pertama kali masuk lewat Esa Office; lihat
+> [SSO dengan Esa Office](#sso-dengan-esa-office).
 
 `seed_simonda` sudah langsung membuat satu akun operator per OPD (username =
 kode OPD huruf kecil, sandi awal `admin123` untuk semua — **wajib diganti**
@@ -217,6 +234,264 @@ dan bukan tugas rutin.
 | Operator OPD | Hanya inovasi OPD-nya sendiri. Tidak bisa memverifikasi. |
 | Verifikator | Melihat semua OPD, memverifikasi, mengekspor, kelola akun operator. |
 | Administrator | Semua di atas, plus Django admin. |
+
+---
+
+## SSO dengan Esa Office
+
+Akun pegawai dipusatkan di **Esa Office**, yang berperan sebagai penyedia identitas
+OpenID Connect (OAuth 2.0 *Authorization Code* + PKCE). SANDO adalah klien OIDC
+pertamanya. Kata sandi diketik hanya di halaman login Esa Office: SANDO tidak
+pernah melihat, meneruskan, atau menyimpannya, dan token Esa Office tidak disimpan.
+
+| | Esa Office | SANDO |
+|---|---|---|
+| Menjawab | Siapa orang ini: ASN, NIP, nama, perangkat daerah | Apa yang boleh ia lakukan di sini: peran, OPD yang datanya terlihat, akun aktif atau tidak |
+| Menyimpan | Akun dan kata sandi | Peran, OPD, dan tautan ke identitas Esa Office (`sub`) |
+
+SSO menyala bila `ESA_OFFICE_ISSUER` diisi di `backend/.env`; dikosongkan, SANDO
+memakai login lokal seperti sebelumnya. Login lokal tidak dihapus: SuperUser awal
+tetap akun yang disediakan terpisah (`createsuperuser`) dan bisa masuk dengan kata
+sandi lokal sebagai cadangan bila Esa Office sedang mati.
+
+> Bagian ini mengandaikan Esa Office sudah menyediakan endpoint OIDC yang
+> dijelaskan di [Kontrak untuk Esa Office](#kontrak-untuk-esa-office). Selama itu
+> belum ada, biarkan `ESA_OFFICE_ISSUER` kosong.
+
+### Alur
+
+1. Tombol **Masuk dengan Esa Office** membuat `verifier` acak yang disimpan di
+   `sessionStorage` tab itu, lalu mengarahkan browser ke
+   `GET /api/auth/esa/mulai?tantangan=SHA256(verifier)`.
+2. Backend membuat `state`, `nonce`, dan pasangan PKCE (S256), menyimpannya di cookie
+   bertanda tangan (`sando_esa`: HttpOnly, SameSite=Lax, Secure di luar mode DEBUG,
+   hanya terkirim ke `/api/auth/esa/`, berlaku 10 menit), lalu mengalihkan browser ke
+   `authorization_endpoint` Esa Office.
+3. Pengguna login di Esa Office, yang mengalihkan browser ke
+   `ESA_OFFICE_REDIRECT_URI` (`/api/auth/esa/callback?code=…&state=…`).
+4. Backend mencocokkan `state` dengan cookie, menukar `code` di `token_endpoint`
+   (client secret + `code_verifier`), lalu memeriksa ID token: tanda tangan lewat
+   JWKS, `iss`, `aud`, `exp`, `iat`, dan `nonce`.
+5. Backend mencari atau membuat akun SANDO untuk `sub` itu (aturan di bawah),
+   menerbitkan tiket sekali pakai (berlaku 60 detik; yang disimpan hanya hash-nya)
+   yang terikat ke `tantangan` tadi, lalu mengalihkan browser ke
+   `ESA_OFFICE_FRONTEND_URL#esa_tiket=…`. Fragmen URL tidak pernah dikirim ke server
+   mana pun.
+6. Frontend menukar tiket beserta `verifier` lewat `POST /api/auth/esa/tukar` dan
+   menerima JWT SANDO (HS256, 12 jam) yang sama persis dengan hasil login lokal.
+   `AuthBearer` dan semua hak akses tidak berubah.
+
+`verifier` di langkah 1 dan 6 menutup *login CSRF*: tanpanya, orang yang punya akun
+Esa Office bisa menyelesaikan login di browsernya sendiri lalu mengirim korban
+tautan `https://<frontend>/#esa_tiket=…`, dan korban masuk sebagai dirinya.
+`verifier` si penyerang tidak ada di browser korban, jadi tiketnya tidak bisa
+ditukar (dan satu percobaan salah sudah menghanguskan tiketnya).
+
+| Persyaratan | Penerapan di SANDO |
+|---|---|
+| HTTPS | Issuer, redirect URI, alamat frontend, dan semua endpoint dari dokumen discovery wajib `https://` (`http` hanya untuk `localhost` saat uji). Alamat yang memuat `#`, spasi, atau `user:sandi@` ditolak. |
+| Tanda tangan | Hanya algoritma asimetris (bawaan RS256/ES256). Kunci diambil dari JWKS dan dicocokkan lewat `kid`; `none`, `HS*`, dan kunci `oct` ditolak, dan algoritma ditentukan setelan SANDO, bukan header token. |
+| Masa berlaku | `exp` dan `iat` wajib (toleransi selisih jam 60 detik). Tiket SANDO 60 detik sekali pakai; JWT SANDO 12 jam. |
+| Klien terdaftar | `client_id` dan `client_secret` dari Esa Office. Rahasia hanya di `.env` server: tidak pernah ke frontend, URL, atau log. |
+| `state` | Acak, diikat ke browser lewat cookie; callback tanpa `state` yang cocok ditolak. |
+| `nonce` | Acak per login; harus sama dengan klaim `nonce` di ID token. |
+| Redirect URI | Selalu dari setelan SANDO (bukan dari permintaan) dan harus persis sama dengan yang didaftarkan di Esa Office. |
+| PKCE | S256, `code_verifier` acak per login. |
+| `iss` dan `aud` | `iss` harus persis sama dengan `ESA_OFFICE_ISSUER`; `aud` harus memuat `client_id`. |
+
+### Memasang SSO
+
+1. **Daftarkan SANDO di Esa Office** sebagai klien rahasia (*confidential client*):
+   `client_id`, `client_secret`, dan satu redirect URI persis
+   `https://<backend-sando>/api/auth/esa/callback` (tanpa wildcard).
+2. Di server: `pip install -r requirements.txt` (kini memuat `PyJWT[crypto]`), lalu
+   `python manage.py migrate` (migrasi `0010_esa_office_oidc`: kolom baru pada OPD dan
+   pengguna, serta tabel tiket masuk).
+3. Isi `backend/.env`:
+
+   ```bash
+   ESA_OFFICE_ISSUER=https://esa-office.rotendaokab.go.id   # contoh; pakai issuer yang sebenarnya
+   ESA_OFFICE_CLIENT_ID=sando
+   ESA_OFFICE_CLIENT_SECRET=<dari Esa Office; hanya di server>
+   ESA_OFFICE_REDIRECT_URI=https://<backend-sando>/api/auth/esa/callback
+   ESA_OFFICE_FRONTEND_URL=https://<frontend-sando>
+   ```
+
+   `ESA_OFFICE_ISSUER` harus persis sama dengan `issuer` di dokumen discovery Esa Office,
+   dan tanpa `#`: bagian alamat setelah `#` (mis. `https://…/#/api/…`) adalah rute halaman
+   web yang tidak pernah sampai ke server, jadi bukan alamat API.
+4. Jalankan `python manage.py esa_office_cek` **dari server SANDO**. Perintah ini
+   memeriksa setelan, dokumen discovery, dan JWKS Esa Office apa adanya (tanpa menulis ke
+   basis data dan tanpa menampilkan rahasia), mencetak redirect URI yang harus
+   didaftarkan, dan berhenti dengan galat bila ada yang salah. Firewall atau daftar putih
+   domain bisa berbeda antara laptop dan server.
+5. Coba masuk dengan satu akun nyata sebelum dibuka untuk semua pengguna.
+
+Frontend tidak punya setelan baru: tombol muncul sendiri bila backend melaporkan SSO
+menyala (`GET /api/auth/opsi`). Di produksi frontend harus dilayani lewat `https://`:
+browser hanya menyediakan Web Crypto (untuk `verifier`) di halaman https atau
+`localhost`.
+
+Setelan opsional:
+
+| Variabel | Bawaan | Arti |
+|---|---|---|
+| `ESA_OFFICE_SCOPE` | `openid profile` | Harus memuat `openid`. |
+| `ESA_OFFICE_ALGORITMA` | `RS256,ES256` | Algoritma tanda tangan ID token yang diterima. Hanya yang asimetris (`RS`/`PS`/`ES` 256–512); `HS256` atau `none` ditolak. |
+| `ESA_OFFICE_TIMEOUT` | `8` | Detik, untuk tiap panggilan jaringan ke Esa Office. Nilai yang bukan angka positif menghentikan aplikasi dengan pesan yang menyebut nama variabelnya. |
+| `ESA_OFFICE_TAUTKAN_NIP` | kosong | NIP verifikator/admin lama yang boleh ditautkan otomatis, dipisah koma (lihat [Aturan akun](#aturan-akun)). |
+| `ESA_OFFICE_PETAKAN_OPD_OTOMATIS` | `1` | `0`: OPD hanya dikenali lewat `esa_id` yang diisi admin (lihat [Pemetaan perangkat daerah](#pemetaan-perangkat-daerah)). |
+| `ESA_OFFICE_LOGIN_LOKAL` | `1` | `0`: selama SSO menyala, kata sandi lokal hanya berlaku bagi administrator/superuser. Gunakan setelah semua pegawai pindah ke Esa Office. |
+
+### Kontrak untuk Esa Office
+
+Yang SANDO harapkan dari Esa Office. `backend/uji_idp_palsu.py` adalah contoh kecil yang
+bisa dijalankan dari perilaku ini (khusus pengujian, bukan untuk produksi).
+
+**Discovery** — `GET {ESA_OFFICE_ISSUER}/.well-known/openid-configuration` berisi
+`issuer` (persis sama dengan `ESA_OFFICE_ISSUER`), `authorization_endpoint`,
+`token_endpoint`, dan `jwks_uri`, semuanya `https://`; `userinfo_endpoint` opsional.
+Bila diiklankan, SANDO memeriksa bahwa `response_types_supported` memuat `code`,
+`code_challenge_methods_supported` memuat `S256`, `id_token_signing_alg_values_supported`
+beririsan dengan `ESA_OFFICE_ALGORITMA`, dan `token_endpoint_auth_methods_supported`
+memuat `client_secret_basic` (dipilih bila ada) atau `client_secret_post`. Bila tidak
+diiklankan, SANDO memakai `client_secret_basic` dan tetap mengirim PKCE S256.
+
+**`/authorize`** — Authorization Code. SANDO mengirim `response_type=code`, `client_id`,
+`redirect_uri`, `scope`, `state`, `nonce`, `code_challenge`, `code_challenge_method=S256`,
+dan `prompt=login` setelah pengguna keluar dari SANDO. Esa Office harus mengautentikasi
+pengguna di halamannya sendiri, hanya menerima redirect URI yang terdaftar persis,
+mengembalikan `code` dan `state` apa adanya, membalas `error=access_denied` bila
+pengguna membatalkan, dan menghormati `prompt=login` (meminta kata sandi lagi walau sesi
+Esa Office masih hidup).
+
+**`/token`** — `POST` form-urlencoded: `grant_type=authorization_code`, `code`,
+`redirect_uri`, `code_verifier`. Klien mengautentikasi diri dengan header Basic atau
+`client_id` dan `client_secret` di badan. Kode berumur pendek dan sekali pakai, PKCE S256
+diperiksa di sini, dan kode yang salah/terpakai/kedaluwarsa dijawab
+`400 {"error": "invalid_grant"}`. Balasan memuat `id_token` (dan `access_token` bila
+`userinfo_endpoint` dipakai).
+
+**ID token** — JWT bertanda tangan RS256 atau ES256 dengan kunci dari `jwks_uri`
+(`kid` di header; wajib bila JWKS punya lebih dari satu kunci yang cocok) dan klaim:
+
+| Klaim | Wajib | Dipakai SANDO untuk |
+|---|---|---|
+| `iss` | ya | Harus persis sama dengan `ESA_OFFICE_ISSUER`. |
+| `aud` | ya | Harus memuat `client_id` SANDO (bila lebih dari satu, `azp` harus `client_id`). |
+| `exp`, `iat` | ya | Masa berlaku (toleransi jam 60 detik). Buat berumur pendek: ID token hanya dipakai sekali, saat callback. |
+| `nonce` | ya | Harus sama dengan nilai yang dikirim SANDO. |
+| `sub` | ya | Identitas tetap pengguna di Esa Office: stabil, unik, dan tidak pernah dipakai ulang oleh orang lain (≤ 255 karakter). Satu-satunya kunci penautan akun. |
+| `name` | ya | Nama tampil; mengikuti Esa Office di setiap login. |
+| `perangkat_daerah.id` | ya | ID perangkat daerah yang stabil (≤ 100 karakter), dipetakan ke OPD SANDO. |
+| `perangkat_daerah.name` | disarankan | Dipakai untuk pemasangan pertama ke OPD dan untuk pesan log. |
+| `nip` | disarankan | Angka saja (≤ 25 digit). Tanpa NIP, akun hanya bisa ditautkan lewat `sub`. |
+| `phone_number`, `email` | opsional | Boleh ada; SANDO tidak membaca dan tidak menyimpannya. |
+
+`name`, `nip`, dan `perangkat_daerah` yang tidak ada di ID token dilengkapi dari
+`userinfo_endpoint` bila tersedia (`Authorization: Bearer <access_token>`); `sub` di
+sana harus sama dengan ID token, dan klaim di ID token yang menang.
+
+**JWKS** — `jwks_uri` memuat kunci publik RSA atau EC (kunci `oct` diabaikan). SANDO
+menyimpannya satu jam dan, bila ada `kid` yang tak dikenal, mengunduh ulang paling
+sering sekali per 30 detik, jadi rotasi kunci cukup dengan menerbitkan kunci baru
+berikut `kid` baru.
+
+### Aturan akun
+
+| Hal | Perilaku |
+|---|---|
+| Penautan | Akun SANDO ditautkan ke `sub` Esa Office (kolom `identity_provider` = `esa-office` dan `external_subject`, unik bila terisi), bukan ke nama, NIP, atau telepon. |
+| Pengguna baru | Dibuat otomatis saat login pertama sebagai **operator** di OPD hasil pemetaan, tanpa kata sandi lokal. Username = NIP (atau `esa-…` bila NIP kosong atau bentrok). |
+| Peran | Tidak pernah datang dari Esa Office. Untuk menaikkan peran, pegawai masuk sekali lalu admin mengubah perannya di `/admin/` → Users. SuperUser awal tetap disediakan terpisah. |
+| Akun SANDO lama | Dipakai ulang lewat NIP: akun yang belum punya identitas Esa Office dan `nip`-nya sama persis ditautkan satu kali; seterusnya hanya `sub` yang dipakai. Lebih dari satu akun ber-NIP sama, atau NIP yang sudah ditautkan ke `sub` lain (mis. akun Esa Office dibuat ulang), ditolak (`akun_ganda`) sampai admin membereskannya di `/admin/` (bagian “Identitas Esa Office” pada pengguna). |
+| Verifikator/admin/staf lama | Bila punya kata sandi lokal, **tidak** ditautkan otomatis: login ditolak (`belum_ditautkan`) sampai NIP-nya didaftarkan di `ESA_OFFICE_TAUTKAN_NIP`. Daftarkan hanya setelah dipastikan pemilik NIP itu di Esa Office memang pemegang akunnya. Operator lama tidak perlu didaftarkan. |
+| Nama dan NIP | Nama mengikuti Esa Office di setiap login; NIP diperbarui bila belum dipakai akun lain. |
+| Identitas tak lengkap | Tanpa `name` atau `perangkat_daerah.id`, atau dengan `nip` yang bukan angka: ditolak (`identitas_tidak_lengkap`). |
+| Akun dinonaktifkan di SANDO | Ditolak (`akun_nonaktif`); login tidak pernah mengaktifkannya kembali. |
+| Login lokal | Bawaan: tetap bisa bagi akun yang punya kata sandi lokal. Dengan `ESA_OFFICE_LOGIN_LOKAL=0`, hanya administrator/superuser; **Kelola Akun** lalu menolak (409) pembuatan akun dan reset sandi, karena kata sandi lokal tidak dipakai lagi (menonaktifkan/mengaktifkan tetap bisa). |
+| Catatan | Penautan, pembuatan akun, pemasangan OPD, dan perpindahan OPD tercatat di log aktivitas; login lewat Esa Office diberi keterangan “via Esa Office”. |
+
+### Pemetaan perangkat daerah
+
+`perangkat_daerah.id` dari Esa Office dipetakan ke OPD SANDO lewat kolom **`OPD.esa_id`**
+(unik bila terisi; bisa diisi admin di `/admin/` → OPD). Bila belum ada OPD yang memegang
+ID itu dan `ESA_OFFICE_PETAKAN_OPD_OTOMATIS=1` (bawaan), SANDO memasangkannya sendiri ke
+**tepat satu** OPD aktif yang belum punya `esa_id` dan yang kode, singkatan, atau namanya
+sama persis dengan `perangkat_daerah.name` atau ID-nya (huruf besar/kecil, tanda baca, dan
+imbuhan “Kabupaten Rote Ndao” diabaikan). Tidak ada tebakan “mirip”: nol atau lebih dari
+satu kecocokan berarti perangkat daerah itu tidak dikenal. Pasangan yang sudah terpasang
+tidak pernah diubah oleh login (pemekaran atau penggabungan diperbaiki admin di
+`/admin/`), dan pemasangan otomatis dicatat di log aktivitas.
+
+Pemasangan otomatis mempercayai pasangan ID–nama yang pertama kali dikirim Esa Office.
+Untuk kontrol penuh di produksi, isi `esa_id` semua OPD di `/admin/` lebih dulu, lalu set
+`ESA_OFFICE_PETAKAN_OPD_OTOMATIS=0`.
+
+### Mutasi ASN (pindah perangkat daerah)
+
+Esa Office adalah sumber kebenaran tempat tugas; SANDO hanya menyesuaikan akses datanya.
+
+- **Operator mengikuti Esa Office di setiap login.** Bila `perangkat_daerah.id` berubah,
+  akun dipindah ke OPD hasil pemetaan yang baru dan perpindahan itu dicatat di log
+  aktivitas (“pindah OPD via Esa Office”, `LAMA -> BARU`). Setelahnya operator hanya
+  melihat data OPD baru. Inovasi dan berkas lama tetap milik OPD lama, karena data SANDO
+  menempel pada OPD, bukan pada orangnya.
+- **Perangkat daerah baru yang belum dikenal SANDO = login ditolak**
+  (`opd_tidak_dikenal`), bukan dibiarkan di OPD lama: operator yang sudah pindah tidak
+  boleh terus melihat data OPD asalnya. Admin memasangkan OPD barunya (isi `esa_id` di
+  `/admin/` → OPD), lalu pegawai mencoba lagi.
+- **Verifikator dan admin tidak dipindahkan** (mereka melihat semua OPD), dan
+  perangkat daerah yang tak dikenal tidak menghalangi mereka masuk. OPD dari Esa Office
+  hanya diisikan bila akunnya belum punya OPD.
+- **Berlaku di login berikutnya.** SANDO baru tahu pegawai itu pindah saat ia masuk lagi
+  lewat Esa Office; sampai itu, ia masih memakai OPD lama. Untuk pemindahan yang
+  mendesak, nonaktifkan akunnya atau ubah OPD-nya di `/admin/` (untuk operator, nilai itu
+  ditimpa lagi oleh Esa Office saat login berikutnya).
+
+### Bila pegawai gagal masuk
+
+Layar login hanya menampilkan pesan tetap yang dipilih frontend dari kode di bawah;
+isi alamat tidak pernah ditampilkan. Alasan rinci ada di log server (logger
+`inovasi.esa_office`; di PythonAnywhere: error log aplikasi web).
+
+| Kode | Biasanya karena | Tindakan |
+|---|---|---|
+| `dibatalkan` | Pengguna menekan batal di Esa Office. | — |
+| `kedaluwarsa` | Login lebih dari 10 menit, cookie diblokir, callback dibuka di browser lain, dua login dimulai bersamaan di browser yang sama (cookie saling menimpa), atau kode otorisasi sudah terpakai. | Ulangi dari tombol Masuk. |
+| `tiket` | Tiket sudah terpakai/kedaluwarsa, atau bukan dari tab ini. | Ulangi dari tombol Masuk, di tab yang sama. |
+| `tidak_tersedia` | Esa Office mati/lambat, domainnya belum ada di daftar putih PythonAnywhere, atau setelan salah. | `python manage.py esa_office_cek`, lalu periksa log. |
+| `opd_tidak_dikenal` | Perangkat daerahnya belum dipetakan ke OPD. | Isi `esa_id` OPD-nya di `/admin/`. |
+| `akun_nonaktif` | Akun SANDO-nya dinonaktifkan. | Aktifkan bila memang sah. |
+| `belum_ditautkan` | Akun verifikator/admin lama dengan kata sandi lokal. | Daftarkan NIP-nya di `ESA_OFFICE_TAUTKAN_NIP`. |
+| `identitas_tidak_lengkap` | Esa Office tidak mengirim `name`, `perangkat_daerah.id`, atau `nip` yang wajar. | Lengkapi data di Esa Office. |
+| `akun_ganda` | NIP sama di beberapa akun SANDO, atau sudah ditautkan ke `sub` lain. | Bereskan di `/admin/` → Users. |
+| `gagal` | Lainnya (termasuk ID token ditolak atau galat tak terduga). | Lihat log server. |
+
+### Batasan yang perlu diketahui
+
+- **Pencabutan tidak seketika.** JWT SANDO tetap sah sampai 12 jam setelah akses pegawai
+  dicabut di Esa Office. Untuk memutusnya segera, nonaktifkan akunnya di SANDO
+  (`AuthBearer` menolak token akun nonaktif pada permintaan berikutnya).
+- **Keluar belum terpusat.** Keluar dari SANDO hanya mengakhiri sesi SANDO; sesi di Esa
+  Office tetap hidup (endpoint `/logout` Esa Office belum dipakai). Supaya komputer
+  bersama aman, login Esa Office berikutnya di browser itu otomatis memakai
+  `prompt=login`.
+- **Login harus selesai di tab yang sama.** `verifier` ada di `sessionStorage` tab yang
+  memulai login; membuka tautan callback di browser atau tab lain berakhir di galat
+  `tiket`. Mulai ulang saja.
+- **Unik NIP dicek saat login, bukan oleh basis data**, karena kolom `nip` lama boleh
+  kosong atau kembar. Batasan unik yang ditegakkan basis data adalah `esa_id` dan pasangan
+  (`identity_provider`, `external_subject`) (bersyarat; didukung PostgreSQL dan SQLite).
+- **Cache per proses.** Dokumen discovery dan JWKS disimpan satu jam per proses (kegagalan
+  discovery diingat 15 detik); PythonAnywhere menjalankan beberapa worker, jadi tiap
+  worker mengunduh sendiri.
+- **PythonAnywhere Free** hanya mengizinkan domain di daftar putih; lihat
+  [Yang perlu diketahui soal tier gratis](#yang-perlu-diketahui-soal-tier-gratis).
+- **Aplikasi daerah lain.** Esa Office dimaksudkan menjadi SSO terpusat bagi semua
+  aplikasi pemerintah daerah: tiap aplikasi mendaftar sebagai klien sendiri (`client_id`,
+  rahasia, dan redirect URI sendiri) dan menentukan sendiri peran serta izinnya.
+  Kontrak di atas tidak perlu berubah.
 
 ---
 
@@ -387,6 +662,12 @@ sini, bukan cuma di `.env` lokal). Deploy, catat domain Pages-nya.
 diakses server. R2 sudah dikonfirmasi bisa diakses dari console pada akun
 ini — kalau suatu saat berhenti bisa diakses, cek
 `https://www.pythonanywhere.com/whitelist/`.
+
+Bila memakai [SSO Esa Office](#sso-dengan-esa-office), host `ESA_OFFICE_ISSUER` (dan host
+endpoint lain yang disebut dokumen discovery-nya, bila berbeda) juga harus ada di
+daftar putih itu: SANDO mengambil discovery, JWKS, dan token dari server, bukan dari
+browser. Bila tidak, tombol Masuk dengan Esa Office berakhir di pesan “Esa Office sedang
+tidak dapat dihubungi”. `python manage.py esa_office_cek` di Bash console memastikannya.
 
 **Tidak ada auto-deploy**: push ke GitHub tidak otomatis ter-deploy. Tiap
 ada perubahan kode: `git pull` lewat Bash console, lalu klik **Reload** di

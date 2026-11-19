@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   UserProfile,
   RingkasanStatistik,
@@ -13,6 +13,9 @@ import {
   fetchProfile,
   login,
   logout,
+  hasilEsaAwal,
+  selesaikanLoginEsa,
+  pesanGalatEsa,
   fetchRingkasan,
   fetchInovasiList,
   fetchInovasiDetail,
@@ -70,6 +73,8 @@ export default function App() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingInovasi, setEditingInovasi] = useState<InovasiDetail | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  // Pesan yang sudah ada saat modal masuk dibuka (mis. galat dari alur Esa Office).
+  const [pesanLogin, setPesanLogin] = useState('');
 
   const [loading, setLoading] = useState(true);
 
@@ -119,8 +124,36 @@ export default function App() {
     }
   };
 
+  // Setelah masuk lewat Esa Office, browser kembali ke sini dengan tiket sekali pakai (atau
+  // kode galat) di fragmen alamat; api.ts membacanya sekali saat dimuat. Tiket hanya boleh
+  // ditukar sekali, sedangkan React StrictMode menjalankan efek dua kali saat pengembangan,
+  // jadi bagian ini dijaga dengan ref supaya tidak ada penukaran kedua yang pasti gagal.
+  const awalDijalankan = useRef(false);
+
   useEffect(() => {
-    loadInitialData();
+    if (awalDijalankan.current) return;
+    awalDijalankan.current = true;
+
+    if (!hasilEsaAwal) {
+      loadInitialData();
+      return;
+    }
+
+    if ('galat' in hasilEsaAwal) {
+      setPesanLogin(pesanGalatEsa(hasilEsaAwal.galat));
+      setShowLoginModal(true);
+      loadInitialData();
+      return;
+    }
+
+    selesaikanLoginEsa(hasilEsaAwal.tiket)
+      .catch((e: any) => {
+        setPesanLogin(e?.message || pesanGalatEsa('tiket'));
+        setShowLoginModal(true);
+      })
+      .finally(() => {
+        loadInitialData();
+      });
   }, []);
 
   // Fetch Innovation Detail whenever an ID is selected
@@ -465,8 +498,12 @@ export default function App() {
       {/* Login Modal */}
       {showLoginModal && (
         <LoginModal
-          onClose={() => setShowLoginModal(false)}
+          onClose={() => {
+            setShowLoginModal(false);
+            setPesanLogin('');
+          }}
           onLogin={handleLogin}
+          pesanAwal={pesanLogin}
         />
       )}
 

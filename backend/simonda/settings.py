@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import dotenv_values, load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -142,6 +143,48 @@ CORS_ALLOWED_ORIGINS = [o for o in os.getenv(
 CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.vercel\.app$",
 ]
+
+# SSO dengan Esa Office lewat OpenID Connect (Authorization Code + PKCE); lihat
+# inovasi/esa_office.py dan README. Menyala bila ESA_OFFICE_ISSUER diisi; kosong =
+# hanya login lokal. Semua alamat harus https (http hanya untuk localhost) dan
+# tanpa "#". ESA_OFFICE_CLIENT_SECRET hanya boleh ada di sisi server.
+def _env_angka(nama, bawaan, tipe):
+    """Setelan numerik dari .env: kosong = bawaan; selain angka > 0 menghentikan
+    startup dengan pesan yang menyebut nama variabelnya."""
+    mentah = os.getenv(nama, "").strip()
+    if not mentah:
+        return bawaan
+    try:
+        nilai = tipe(mentah)
+    except ValueError:
+        raise ImproperlyConfigured(f"{nama} harus berupa angka (isi sekarang: {mentah!r}).") from None
+    if not nilai > 0:
+        raise ImproperlyConfigured(f"{nama} harus lebih dari 0 (isi sekarang: {mentah!r}).")
+    return nilai
+
+
+def _env_daftar(nama, bawaan=""):
+    return [x.strip() for x in os.getenv(nama, bawaan).split(",") if x.strip()]
+
+
+ESA_OFFICE_ISSUER = os.getenv("ESA_OFFICE_ISSUER", "").strip()
+ESA_OFFICE_CLIENT_ID = os.getenv("ESA_OFFICE_CLIENT_ID", "").strip()
+ESA_OFFICE_CLIENT_SECRET = os.getenv("ESA_OFFICE_CLIENT_SECRET", "").strip()
+ESA_OFFICE_REDIRECT_URI = os.getenv("ESA_OFFICE_REDIRECT_URI", "").strip()   # https://<backend>/api/auth/esa/callback
+ESA_OFFICE_FRONTEND_URL = os.getenv("ESA_OFFICE_FRONTEND_URL", "").strip()   # alamat frontend SANDO
+ESA_OFFICE_SCOPE = os.getenv("ESA_OFFICE_SCOPE", "").strip() or "openid profile"
+ESA_OFFICE_ALGORITMA = _env_daftar("ESA_OFFICE_ALGORITMA", "RS256,ES256")      # hanya algoritma asimetris
+ESA_OFFICE_TIMEOUT = _env_angka("ESA_OFFICE_TIMEOUT", 8.0, float)              # detik
+# NIP verifikator/admin SANDO yang dibuat dengan kata sandi lokal dan dipastikan
+# orang yang sama dengan pemilik NIP itu di Esa Office; hanya yang terdaftar
+# ditautkan otomatis (lihat esa_office.py).
+ESA_OFFICE_TAUTKAN_NIP = _env_daftar("ESA_OFFICE_TAUTKAN_NIP")
+# 1: OPD diisi otomatis (ESA_ID) bila nama perangkat daerah cocok persis dengan
+# tepat satu OPD; 0: hanya OPD yang esa_id-nya sudah diisi admin.
+ESA_OFFICE_PETAKAN_OPD_OTOMATIS = os.getenv("ESA_OFFICE_PETAKAN_OPD_OTOMATIS", "1") == "1"
+# 1: login dengan kata sandi lokal tetap dibolehkan bagi semua akun; 0: hanya
+# administrator (cadangan bila Esa Office mati) selama SSO menyala.
+ESA_OFFICE_LOGIN_LOKAL = os.getenv("ESA_OFFICE_LOGIN_LOKAL", "1") == "1"
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = os.getenv("SSL_REDIRECT", "1") == "1"
